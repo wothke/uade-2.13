@@ -7,12 +7,12 @@ mergeInto(LibraryManager.library, {
 	},	
 	uade_request_file_size: function(name) {
 		return window['fileSizeRequestCallback'](name);
-	},
+	},	
 	uade_notify_song_update: function(i, min, max, curr) {
-		var infoText= Module.Pointer_stringify(i);	
-		var minText= Module.Pointer_stringify(min);	
-		var maxText= Module.Pointer_stringify(max);	
-		var currText= Module.Pointer_stringify(curr);	
+		var infoText= Pointer_stringify(i);	
+		var minText= Pointer_stringify(min);	
+		var maxText= Pointer_stringify(max);	
+		var currText= Pointer_stringify(curr);	
 
 		var arr= infoText.split("\n");// title, prefix, modulename, authorname, specialinfo, version, credits, remarks
 		// ---------------------- extract tagged infos ---------------------------------------
@@ -22,19 +22,19 @@ mergeInto(LibraryManager.library, {
 		for (i= 0; i<arr.length; i++) {
 			var line= arr[i];
 			// one liner's
-			if (line.startsWith("File name:")) {
+			if (startsWith(line, "File name:")) {
 				var a= dic['title']? dic['title']: []
 				a.push(line.split("/").pop().trim());				
 				dic['title']= a;
-			} else if (line.startsWith("Song title:")) {
+			} else if (startsWith(line, "Song title:")) {
 				var a= dic['title']? dic['title']: []
 				a.unshift(line.substring(11).trim());				
 				dic['title']= a;
-			} else if (line.startsWith("File prefix:")) {
+			} else if (startsWith(line, "File prefix:")) {
 				dic['prefix']= line.substring(12).trim();
 			} else {
 				// multi line
-				var k= line.startsWith2(["MODULENAME:", "AUTHORNAME:", "SPECIALINFO:", "VERSION:", "CREDITS:", "Remarks:"]);
+				var k= startsWith2(line, ["MODULENAME:", "AUTHORNAME:", "SPECIALINFO:", "VERSION:", "CREDITS:", "Remarks:"]);
 				if (k) {
 					// new section
 					if (key && section) {
@@ -55,7 +55,7 @@ mergeInto(LibraryManager.library, {
 		if (key && section) {
 			dic[key]= section;
 		}
- 				
+				
 		// ---------------------- try to make sense of structured info -----------------------
 		var limit= 3
 		var infoLines= [];

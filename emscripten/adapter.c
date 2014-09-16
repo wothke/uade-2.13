@@ -21,6 +21,8 @@
 #include "uade.h"
 #include "standalonesupport.h"
 
+#include <emscripten.h>
+
 #ifdef EMSCRIPTEN
 #define EMSCRIPTEN_KEEPALIVE __attribute__((used))
 #else
@@ -86,6 +88,25 @@ int EMSCRIPTEN_KEEPALIVE emu_compute_audio_samples() {
 		}
 	}
 	return 1;
+}
+
+char script[1024];
+char initFs= 0;
+
+int emu_prepare(char *basedir) __attribute__((noinline));
+int EMSCRIPTEN_KEEPALIVE emu_prepare(char *basedir)
+{
+	if (!initFs) {
+		const char *in = 	"Module.FS_createPath(\"/\", \"%s/players/ENV/EaglePlayer\", true, true);"
+							"Module.FS_createPath(\"/%s/players/ENV\", \"S\", true, true);"
+							"Module.FS_createPath(\"/%s/\", \"songs\", true, true);"
+							"Module.FS_createPath(\"/%s/\", \"amigasrc/score\", true, true);";
+
+		snprintf(script, sizeof(script), in, basedir, basedir, basedir, basedir);
+
+		emscripten_run_script(script);
+		initFs= 1;
+	}
 }
 
 int emu_init(int sample_rate, char *basedir, char *songmodule) __attribute__((noinline));

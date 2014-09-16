@@ -47,10 +47,6 @@ try {
 }
 
 var basePath= "uade";	// setup virtual file system used within Emscripten
-FS.createPath("/", basePath+"/players/ENV/EaglePlayer", true, true);
-FS.createPath("/"+basePath+"/players/ENV", "/S", true, true);
-FS.createPath("/"+basePath+"/", "songs", true, true);
-FS.createPath("/"+basePath+"/", "amigasrc/score", true, true);
 
 var player= new SamplePlayer(basePath, sampleRate, updateGUI, doOnEnd, doOnError);
 
@@ -278,7 +274,9 @@ function init() {
 <details>
   <summary>What's this?</summary>
   <div>
-    Ajax at its best.. this poor man's version of the unmatched Chron-O-John gives you a front seat for your time travel to the days of Amiga music. Based on <a href="http://zakalwe.fi/uade/" target="_blank">UADE</a> (Unix Amiga Delitracker Emulator). You can bring your own Amiga music files by dragging them onto the device (only single file songs supported).  
+    Ajax at its best.. this poor man's version of the unmatched Chron-O-John gives you a front seat for your time travel to the 
+	days of Amiga music. Based on <a href="http://zakalwe.fi/uade/" target="_blank">UADE</a> (Unix Amiga Delitracker Emulator). 
+	You can bring your own Amiga music files by dragging them onto the device (only single file songs supported).  
 		
   <p>2014 by Juergen Wothke </p>
  
@@ -288,7 +286,8 @@ function init() {
   
   <p>Contrarry to most other HTML5 based pages out there, the music here is NOT based on  
   OscillatorNode based waveforms or the playback of some sampledata file. Instead the samples here 
-  are completely calculated within JavaScript by running the 'uade' emulator logic. </p>
+  are completely calculated within JavaScript by running the 'uade' emulator logic. The source code can be found
+  <a href="https://github.com/wothke/uade-2.13" target="_blank">here</a></p>
   
  <p>Credits: Many people have contributed to 'UADE' and I cannot name them all here. I had to tinker a bit with their code to get an architecture suitable for the web but once again <a href="https://github.com/kripken/emscripten/wiki" target="_blank">emscripten</a> then did the heavy lifting compiling the C code into JavaScript.</p>
  

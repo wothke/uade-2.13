@@ -111,6 +111,9 @@ SamplePlayer = function(basePath, sampleRate, onUpdate, onEnd, onError) {
 
 SamplePlayer.prototype = {
 	createScriptProcessor: function(audioCtx) {
+		var prepareFunc =  Module.cwrap('emu_prepare', 'number', ['string']);
+		var status = prepareFunc(this.basePath);	
+
 		var scriptNode = audioCtx.createScriptProcessor(this.SAMPLES_PER_BUFFER, 0, 2);
 		scriptNode.onaudioprocess = fetchSamples;
 	//	scriptNode.onaudioprocess = player.generateSamples.bind(player);	// doesn't work with dumbshit Chrome GC
@@ -131,7 +134,7 @@ SamplePlayer.prototype = {
 		reader.onload = function() {
 		
 			var d= new Uint8Array(reader.result);	
-			var f= FS.createDataFile("/", filenameFull, d, true, true);
+			var f= Module.FS_createDataFile("/", filenameFull, d, true, true);
 			this.binaryFileMap[filenameFull]= f;
 			this.setupSongData(filename);
 			
@@ -153,8 +156,15 @@ SamplePlayer.prototype = {
 	},
 	// callback invoked by emscripten code 
 	fileSizeRequestCallback: function (name) {
-		var filename= Pointer_stringify(name);
+		var filename= Module.Pointer_stringify(name);
 		var f= this.binaryFileMap[filename];	// this API is only called after the file has actually loaded
+		
+		// HACK to workaround optimizer 
+		if (typeof f.contents == 'undefined') {
+			if (typeof f.u == 'undefined') 
+				alert("fatal error: optimizer removed variable needed to access Node.contents");
+			f.contents= f.u;
+		}
 		return f.contents.length;
 	},
 	
@@ -162,7 +172,7 @@ SamplePlayer.prototype = {
 	// data has already been loaded the function signals the success by returning 0.. if the file has not 
 	// yet been loaded the function returns -1	
 	fileRequestCallback: function (name) {
-		var filename= Pointer_stringify(name);
+		var filename= Module.Pointer_stringify(name);
 		return this.loadFile(filename, function() {
 //						console.log("loaded file ["+filename+"]");
 						this.initIfNeeded();	// kick off next attempt to initialize
@@ -202,7 +212,7 @@ SamplePlayer.prototype = {
 
 				// setup data in our virtual FS (the next access should then be OK)
 					var d= new Uint8Array(arrayBuffer);	
-					var f= FS.createDataFile("/", filename, d, true, true);
+					var f= Module.FS_createDataFile("/", filename, d, true, true);
 					this.binaryFileMap[filename]= f;
 					
 					// now that we have an additional file loaded we can retry the initialization
