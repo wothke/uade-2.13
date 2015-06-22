@@ -115,10 +115,11 @@ int EMSCRIPTEN_KEEPALIVE emu_init(int sample_rate, char *basedir, char *songmodu
 	return uade_reset(sample_rate, basedir, songmodule);
 }
 
-static void emu_set_subsong(int subsong) __attribute__((noinline));
-static void EMSCRIPTEN_KEEPALIVE emu_set_subsong(int subsong)
+static int emu_set_subsong(int subsong) __attribute__((noinline));
+static int EMSCRIPTEN_KEEPALIVE emu_set_subsong(int subsong)
 {
 	change_subsong(subsong);
+	return 0;
 }
 
 void emu_teardown (void)  __attribute__((noinline));

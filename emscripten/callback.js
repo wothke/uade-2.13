@@ -97,6 +97,16 @@ mergeInto(LibraryManager.library, {
 		var info2= infoLines.length>1 ? infoLines[1]: "";
 		var info3= infoLines.length>2 ? infoLines[2]: "";
 		
-		return window['songUpdateCallback'](info1, info2, info3, minText, maxText, currText);
+		// cannot use an object here because the optimizer will
+		// rename the fields..
+		var ret= new Array();	
+		ret["info1"]= info1;
+		ret["info2"]= info2;
+		ret["info3"]= info3;
+		ret["minText"]= minText;
+		ret["maxText"]= maxText;
+		ret["currText"]= currText;
+		
+		return window['songUpdateCallback'](ret);
 	},
 });

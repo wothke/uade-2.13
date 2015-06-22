@@ -911,7 +911,7 @@ static int get_player_name(const char *dir, char *modulename, char *playername) 
 	int status= uade_is_our_file(modulename, 0, &_state);	// 1= ok; 0= not; -1=async load
 	if (status < 1) {	// handle errors
 		if (status <0) {
-			fprintf(stderr, "some file is not ready yet: %s\n", modulename);
+//			fprintf(stderr, "some file is not ready yet: %s\n", modulename);
 			return -1;
 		} else {
 			fprintf(stderr, "Unknown format: %s\n", modulename);
@@ -1118,7 +1118,7 @@ int uade_reset(int sample_rate, char *basedir, char *songmodule)
 	
 	int stat= get_player_name(basedir , song.modulename, song.playername);
 	if (stat != 0) {
-		fprintf(stderr, "fail %s / %s\n", song.modulename, song.playername);
+//		fprintf(stderr, "fail %s / %s\n", song.modulename, song.playername);
 		return stat;
 	} 
 	struct uade_state* state= &_state;	// setup in above get_player_name
