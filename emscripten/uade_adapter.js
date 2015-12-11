@@ -65,7 +65,7 @@ UADEBackendAdapter = (function(){ var $this = function (basePath) {
 			}
 			return [this.basePath, fullFilename];
 		},
-		loadMusicData: function(sampleRate, path, filename, data) {
+		loadMusicData: function(sampleRate, path, filename, data, options) {
 			// UADE adds its own path delim so we better remove existing delim
 			if (path.substr(-1) === "/") path= path.substring(0, path.length-1);
 			
