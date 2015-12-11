@@ -124,7 +124,7 @@ extern char *cfgfile_subst_path (const char *path, const char *subst, const char
 extern int target_parse_option (struct uae_prefs *, char *option, char *value);
 extern void target_save_options (FILE *, struct uae_prefs *);
 
-#ifndef EMSCRIPTEN
+#ifdef EMSCRIPTEN
 extern int cfgfile_load_file (struct uae_prefs *, FILE *f);
 #else
 extern int cfgfile_load (struct uae_prefs *, const char *filename);
