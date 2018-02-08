@@ -1,32 +1,28 @@
-WebUADE
-=======
+# WebUADE
 
-	Copyright (C) 2014 Juergen Wothke
+Copyright (C) 2014 Juergen Wothke
 
-	LICENSE
-		See individual files for specific licensing information (most of UADE
-		uses the terms of the GNU General Public License).
-
-
-This is a JavaScript/WebAudio plugin of UADE. This plugin is designed to work with version 1.0 of my 
+This is a JavaScript/WebAudio plugin of UADE. This plugin is designed to work with my 
 generic WebAudio ScriptProcessor music player (see separate project). 
 
 WebUADE is based on "uade-2.13" and this project still contains most of the original files (even if some of them are 
-not used in this context). Only the various unused "frontend" subfolders have been completely removed. 
+not used in this context). The various unused "frontend" subfolders and top level make-files have been completely removed. 
 
 Some of the files were modified (see explanations below) but it should be easy to identify respective changes either 
 by diff-ing against an original/unchanged uade-2.13 distribution or by searching for the "EMSCRIPTEN" #ifdefs which 
 mark the changes. (The structure of the original code was preserved to ease comparison.)
 
-You'll need Emscripten (I used the win installer on WinXP: emsdk-1.13.0-full-32bit.exe which could (at the time) be 
-found here: http://kripken.github.io/emscripten-site/docs/getting_started/downloads.html) I did not need to perform ANY 
-additions or manual changes on the installation. The below instructions assume that the uade-2.13 project folder has 
-been moved into the main emscripten installation folder (maybe not necessary) and that a command prompt has been opened 
-within the project's "emscripten" sub-folder, and that the Emscripten environment vars have been previously set (run 
-emsdk_env.bat).
 
+## Howto build
 
-Howto build:
+You'll need Emscripten (http://kripken.github.io/emscripten-site/docs/getting_started/downloads.html). The make script 
+is designed for use of emscripten version 1.37.29 (unless you want to create WebAssembly output, older versions might 
+also still work).
+
+The below instructions assume that the uade-2.13 project folder has been moved into the main emscripten 
+installation folder (maybe not necessary) and that a command prompt has been opened within the 
+project's "emscripten" sub-folder, and that the Emscripten environment vars have been previously 
+set (run emsdk_env.bat).
 
 The original "uade-2.13" makefiles must NOT be used because they might overwrite some of the manually performed changes. 
 Instead the Web version is built using the makeEmscripten.bat that can be found in this folder. The script will compile 
@@ -35,7 +31,7 @@ the "htdocs" can be tested by first copying into some document folder of a web s
 an 'uade' subfolder and copy the "players" and "amigasrc" sub-folders into it - also create a 'songs' folder here to 
 hold the music files. A running example can be found here: http://www.wothke.ch/webuade
 
-Background information:
+## Background information
 
 This is a short summary how the code was derived from the original "uade-2.13" (maybe this helps if ever the code 
 needs to be migrated to a different version of UADE).
@@ -65,5 +61,19 @@ not the emulator.
 - The callback.js library provides JavaScript functionalities that are directly compilied into the emulator (mainly used 
 for the interactions with the "native" JavaScript portions of the player). 
 
+
+## LICENSE
+
+This library is free software; you can redistribute it and/or modify it
+under the terms of the GNU Lesser General Public License as published by
+the Free Software Foundation; either version 2.1 of the License, or (at
+your option) any later version. This library is distributed in the hope
+that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
 
 

@@ -107,6 +107,7 @@ int EMSCRIPTEN_KEEPALIVE emu_prepare(char *basedir)
 		emscripten_run_script(script);
 		initFs= 1;
 	}
+	return 0;
 }
 
 int emu_init(int sample_rate, char *basedir, char *songmodule) __attribute__((noinline));
