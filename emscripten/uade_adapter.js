@@ -25,11 +25,27 @@
 UADEBackendAdapter = (function(){ var $this = function (basePath) { 
 	$this.base.call(this, backend_UADE.Module, 2);	
 		this.basePath= basePath;
-		this.Module.ccall('emu_prepare', 'number', ['string'], [basePath]);	// init virtual FS
+		this.isReady= false;
+		
+		if (!backend_UADE.Module.notReady) {
+			// in sync scenario the "onRuntimeInitialized" has already fired before execution gets here,
+			// i.e. it has to be called explicitly here (in async scenario "onRuntimeInitialized" will trigger
+			// the call directly)
+			this.doOnAdapterReady();
+		}		
 	}; 
 	// UADE's sample buffer contains 2-byte integer sample data (i.e. must be rescaled) 
 	// of 2 interleaved channels
-	extend(EmsHEAP16BackendAdapter, $this, {  
+	extend(EmsHEAP16BackendAdapter, $this, {
+		doOnAdapterReady: function() {
+			// called when runtime is ready (e.g. asynchronously when WASM is loaded)
+			this.Module.ccall('emu_prepare', 'number', ['string'], [this.basePath]);	// init virtual FS
+			this.isReady = true;
+		},
+		isAdapterReady: function() { 
+			return this.isReady;
+		},		
+		
 		getAudioBuffer: function() {
 			var ptr=  this.Module.ccall('emu_get_audio_buffer', 'number');			
 			// make it a this.Module.HEAP16 pointer

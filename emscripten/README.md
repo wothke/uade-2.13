@@ -31,6 +31,10 @@ the "htdocs" can be tested by first copying into some document folder of a web s
 an 'uade' subfolder and copy the "players" and "amigasrc" sub-folders into it - also create a 'songs' folder here to 
 hold the music files. A running example can be found here: http://www.wothke.ch/webuade
 
+## Dependencies
+The current version requires version 1.02 (older versions will not
+support WebAssembly) of my https://github.com/wothke/webaudio-player.
+
 ## Background information
 
 This is a short summary how the code was derived from the original "uade-2.13" (maybe this helps if ever the code 
@@ -62,7 +66,7 @@ not the emulator.
 for the interactions with the "native" JavaScript portions of the player). 
 
 
-## LICENSE
+## License
 
 This library is free software; you can redistribute it and/or modify it
 under the terms of the GNU Lesser General Public License as published by

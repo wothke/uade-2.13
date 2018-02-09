@@ -1,8 +1,8 @@
 // some utility code
-startsWith= function(a, str) {
+function startsWith(a, str) {
 	return (a.match("^"+str)==str)
-};
-startsWith2= function(a, arr) {
+}
+function startsWith2(a, arr) {
 	var i;
 	for(i= 0; i<arr.length; i++) {
 		var k= arr[i];
@@ -10,4 +10,4 @@ startsWith2= function(a, arr) {
 			return k;
 	}
 	return null;
-};
+}
