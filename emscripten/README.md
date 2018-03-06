@@ -31,6 +31,10 @@ the "htdocs" can be tested by first copying into some document folder of a web s
 an 'uade' subfolder and copy the "players" and "amigasrc" sub-folders into it - also create a 'songs' folder here to 
 hold the music files. A running example can be found here: http://www.wothke.ch/webuade
 
+Known pitfall: When using FTP to upload the files to some server, make sure to use "binary mode" for the
+files in the "uade/players" folder (otherwise some of them will get damaged)!
+
+
 ## Dependencies
 The current version requires version 1.02 (older versions will not
 support WebAssembly) of my https://github.com/wothke/webaudio-player.
