@@ -139,7 +139,7 @@ static struct eagleplayer *analyze_file_format(int *content,
 	struct AFILE *uo= uade_fopen(modulename, "rb");
   	
 	if ((f = uo->file) == NULL)	{
-		eagle_file_status= uo->async_status;	
+		eagle_file_status= uo->async_status;
 		return NULL;
 	}
 	st.st_size= uade_get_file_size(modulename);
@@ -311,10 +311,9 @@ static int ufcompare(const void *a, const void *b)
 
 int uade_is_our_file(const char *modulename, int scanmode,
 		     struct uade_state *state)
-{
+{	
 	int content;
 	struct eagleplayer *ep;
-
 	ep = analyze_file_format(&content, modulename, state);
 
 	if (!scanmode)

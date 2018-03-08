@@ -312,7 +312,8 @@ void uade_send_debug(const char *fmt, ...)
 #ifdef EMSCRIPTEN
 // we could use uade_song2 struct instead... but for the JavaScipt side
 // handling the below is simpler:
-char info_text[512];	// unfortunately there is no well structured info..
+#define MAX_INFO_TXT 512
+char info_text[MAX_INFO_TXT +1];	// unfortunately there is no well structured info..
 
 char inf_mins[10];	
 char inf_maxs[10];	
@@ -889,11 +890,21 @@ char *getAbsPath(const char*dir, const char*file) {
 	return abspath;
 }
 
+void emsCopyPath(char *dest, int maxsize, char*src) {
+	// with the special chars that may be used in song file URLs 
+	// the 'snprintf' used earlier no longer works..
+	
+	int srcLen= strlen(src);
+	srcLen= srcLen > maxsize ? maxsize : srcLen;
+	strncpy(dest, src, srcLen); dest[srcLen]= 0 ;
+}
+
+static 
 // @return -1=need async load; 0= ok; 1= not ok
 static int get_player_name(const char *dir, char *modulename, char *playername) {
-	snprintf(info_text, sizeof info_text, modulename);	// hack
-
-
+	emsCopyPath(info_text, MAX_INFO_TXT, modulename);
+//	snprintf(info_text, MAX_INFO_TXT, modulename);	// doesn't work for special char paths..
+	
 	memset(&_state, 0, sizeof _state);	// arrgh..ugly side-effect
 
 	uade_config_set_defaults(&_state.config);	// is this really needed and does it actually work?
@@ -1112,10 +1123,10 @@ int uade_reset(int sample_rate, char *basedir, char *songmodule)
 	snprintf(song.scorename, sizeof song.scorename, "%s/amigasrc/score/score", basedir);
 	snprintf(song.modulename, sizeof song.modulename, "%s/%s", basedir, songmodule);
 	snprintf(song.playername, sizeof song.playername, "");
-//	fprintf(stderr, "song.modulename: %s [%s] %s\n", song.modulename, basedir, songmodule);
+	//fprintf(stderr, "song.modulename: %s [%s] %s\n", song.modulename, basedir, songmodule);
 	// resolve the needed player (for "custom" modules the module becomes the player)
 	 
-	
+//fprintf(stderr, "call get_player_name: [%s] [%s] [%s]\n", basedir, song.modulename, song.playername);
 	int stat= get_player_name(basedir , song.modulename, song.playername);
 	if (stat != 0) {
 //		fprintf(stderr, "fail %s / %s\n", song.modulename, song.playername);

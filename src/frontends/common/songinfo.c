@@ -435,6 +435,7 @@ static void process_dm2_mod(char *credits, size_t credits_len,
 
 static int process_module(char *credits, size_t credits_len, char *filename)
 {
+//fprintf(stderr, "process_module [%s][%d][%s]\n", credits, credits_len, filename);
 	FILE *modfile;
 	struct stat st;
 	size_t modfilelen;

@@ -90,7 +90,8 @@ mergeInto(LibraryManager.library, {
 			} 
 		}
 		if (infoLines.length < limit) {	// last resort
-			infoLines.push(dic['title'].shift() +" ("+ dic['prefix'] +")");
+			if (dic['title'])
+				infoLines.push(dic['title'].shift() +" ("+ dic['prefix'] +")");
 		}
 		
 		var info1= infoLines.length>0 ? infoLines[0]: "";

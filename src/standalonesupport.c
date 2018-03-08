@@ -32,7 +32,7 @@ extern long uade_request_file_size(const char *filename);
 
 struct AFILE open_stat;	// since all loading is sequential we can use this shared struct
 
-char virt_fs_path[255];
+char virt_fs_path[512];
 
 struct AFILE * uade_fopen(const char *filename, const char *mode) {
 // every file access comes through this API... return NULL to signal "file not ready" error .. 
@@ -42,15 +42,15 @@ struct AFILE * uade_fopen(const char *filename, const char *mode) {
 //	fprintf(stderr, "uade_request_file response for %s: %d\n", filename, status);
 
 	if (status < 0) {	// file not ready..
-		f= 0; 	
+		f= 0;
+//		fprintf(stderr, "file not ready: [%s]\n", filename);	
 	} else if (status > 0) {
-		fprintf(stderr, "error: file does not exist: /%s\n", filename);	
+//		fprintf(stderr, "error: file does not exist: /%s\n", filename);	
 		f= 0;
 	} else {	
-		snprintf(virt_fs_path, 255, "/%s", filename);	
+		snprintf(virt_fs_path, 512, "/%s", filename);	
 		f =fopen(virt_fs_path, mode);	// in Emscripten this will use the virtual in memory FS
 //		fprintf(stderr, "loading of: [%s] %s\n", virt_fs_path, f?"succeeded":"failed (must NEVER happen!)");	
-
 	}
 	open_stat.async_status= status;
 	open_stat.file= f;
@@ -85,7 +85,8 @@ int is_amiga_file_not_ready(void) {
 	return last_file_not_ready;
 }
 									
-									
+extern void emsCopyPath(char *dest, int maxsize, char*src);
+							
 /* opens file in amiga namespace */
 struct AFILE * uade_open_amiga_file(char *aname, const char *playerdir)
 {
@@ -130,8 +131,8 @@ struct AFILE * uade_open_amiga_file(char *aname, const char *playerdir)
     }	
     /* fprintf(stderr, "uade: opening from dir %s\n", dirname); */
   } else {
-	snprintf(dirname, sizeof(dirname), aname);	// e.g. railroad tycoon.dl
-//	snprintf(dirname, sizeof(real), "%s/%s", playerdir, aname);
+	emsCopyPath(dirname, sizeof(dirname), aname);
+//	snprintf(dirname, sizeof(dirname), aname);	// e.g. railroad tycoon.dl
   }
 
 //fprintf(stderr, "amiga out: opening [%s]\n", dirname);
