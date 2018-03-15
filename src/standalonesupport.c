@@ -90,7 +90,6 @@ extern void emsCopyPath(char *dest, int maxsize, char*src);
 /* opens file in amiga namespace */
 struct AFILE * uade_open_amiga_file(char *aname, const char *playerdir)
 {
-//fprintf(stderr, "amiga in: opening [%s] [%s]\n", aname, playerdir);
   char *separator;
   char *ptr;
   char copy[PATH_MAX];
@@ -154,7 +153,6 @@ struct AFILE * uade_open_amiga_file(char *aname, const char *playerdir)
 	quit_program = 1;
     uade_reboot = 1;
 	
-    fprintf (stderr, "uade: couldn't open file (%s) induced by (%s)\n", dirname, aname);
   }
   return uo;
 }

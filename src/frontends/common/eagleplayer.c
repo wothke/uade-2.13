@@ -160,15 +160,15 @@ static struct eagleplayer *analyze_file_format(int *content,
 
 	uade_filemagic(buf, bytesread, ext, st.st_size, modulename, state->config.verbose);
 
-	if (strcmp(ext, "reject") == 0)
+	if (strcmp(ext, "reject") == 0) {
 		return NULL;
-
+	}
 	if (ext[0] != 0 && state->config.verbose)
 		fprintf(stderr, "Content recognized: %s (%s)\n", ext, modulename);
 
-	if (strcmp(ext, "packed") == 0)
+	if (strcmp(ext, "packed") == 0) {
 		return NULL;
-
+	}
 	if (!load_playerstore(state))
 		return NULL;
 
@@ -185,9 +185,11 @@ static struct eagleplayer *analyze_file_format(int *content,
 	*t = 0;
 	prefix = (char *) buf;
 
-	if (strlen(prefix) < MAX_SUFFIX_LENGTH)
+	if (strlen(prefix) < MAX_SUFFIX_LENGTH) {
 		namecandidate = get_eagleplayer(prefix, state->playerstore);
-
+		
+		if(namecandidate && state->config.verbose) fprintf(stderr, "   found prefix candidate: %s\n", prefix);	
+	}
 	if (namecandidate == NULL) {
 		/* Try postfix */
 		t = xbasename(modulename);
@@ -196,12 +198,15 @@ static struct eagleplayer *analyze_file_format(int *content,
 
 		if (strlen(postfix) < MAX_SUFFIX_LENGTH)
 			namecandidate = get_eagleplayer(postfix, state->playerstore);
+		
+		if(namecandidate && state->config.verbose) fprintf(stderr, "   found postfix candidate: %s\n", postfix);	
 	}
 
 	/* If filemagic found a match, we'll use player plugins associated with
 	   that extension */
 	if (ext[0]) {
 		contentcandidate = get_eagleplayer(ext, state->playerstore);
+		if(contentcandidate && state->config.verbose) fprintf(stderr, "   found ext candidate: %s\n", ext);	
 		if (contentcandidate != NULL) {
 			/* Do not recognize name detectable eagleplayers by
 			   content */
@@ -216,9 +221,9 @@ static struct eagleplayer *analyze_file_format(int *content,
 		}
 	}
 
-	if (state->config.verbose)
-		fprintf(stderr, "Format detection by filename\n");
-
+	if (state->config.verbose) {
+		fprintf(stderr, "   format detection by filename %s\n", !namecandidate ? "failed" : "successful");
+	}
 	return namecandidate;
 }
 
@@ -258,8 +263,7 @@ static void handle_attribute(struct uade_attribute **attributelist,
 		success = 1;
 		break;
 	default:
-		fprintf(stderr, "Unknown song option: %s\n",
-			item);
+		fprintf(stderr, "Unknown song option: %s\n", item);
 		break;
 	}
 
@@ -322,20 +326,22 @@ int uade_is_our_file(const char *modulename, int scanmode,
 	if (ep == NULL) {
 #ifdef EMSCRIPTEN
 	// additional eagle_file_status: -1: pending load; 0:OK; 1:error
-		if(eagle_file_status <0)		// need to wait for async load
+		if(eagle_file_status <0) {		// need to wait for async load
 			return -1;
+		}
 #endif
 		return 0;
 	}
-	if (content)
+	if (content) {
 		return 1;
-
-	if (state->config.content_detection && content == 0)
+	}
+	if (state->config.content_detection && content == 0) {
 		return 0;
-
-	if ((ep->flags & ES_CONTENT_DETECTION) != 0)
+	}
+	if ((ep->flags & ES_CONTENT_DETECTION) != 0) {
 		return 0;
-
+	}
+	
 	return 1;
 }
 

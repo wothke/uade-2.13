@@ -907,8 +907,19 @@ static int get_player_name(const char *dir, char *modulename, char *playername) 
 	
 	memset(&_state, 0, sizeof _state);	// arrgh..ugly side-effect
 
+#ifndef EMSCRIPTEN
 	uade_config_set_defaults(&_state.config);	// is this really needed and does it actually work?
-	
+#else
+	char *tmp= malloc(512);
+	snprintf(tmp, 512, "%s/uade.conf", dir);
+	int status= uade_load_config(&_state.config, tmp);
+	free(tmp);
+	if (status < 0) {	// handle errors
+//		fprintf(stderr, "some file is not ready yet: %s\n", modulename);
+		return -1;
+	} else {
+	}
+#endif	
 	snprintf(_state.config.basedir.name, sizeof _state.config.basedir.name, dir);
 //	_state.config.verbose= 1;
 	
@@ -919,10 +930,10 @@ static int get_player_name(const char *dir, char *modulename, char *playername) 
 	
 	alloc_dummy_song(&_state, modulename);
 	
-	int status= uade_is_our_file(modulename, 0, &_state);	// 1= ok; 0= not; -1=async load
+	status= uade_is_our_file(modulename, 0, &_state);	// 1= ok; 0= not; -1=async load
 	if (status < 1) {	// handle errors
 		if (status <0) {
-//			fprintf(stderr, "some file is not ready yet: %s\n", modulename);
+fprintf(stderr, "some file is not ready yet: %s\n", modulename);
 			return -1;
 		} else {
 			fprintf(stderr, "Unknown format: %s\n", modulename);
@@ -1038,13 +1049,11 @@ static int uade_safe_load_name(int vaddr, char *name, const char *expl,
 #ifndef EMSCRIPTEN
   file = fopen(name, "rb");
   if (!file) {
-    fprintf(stderr, "uadecore: Could not load %s %s.\n", expl, name);
     return 0;
   }
 #else
   struct AFILE *uo;
   
-// fprintf(stderr, "uade_safe_load_name %s: %s\n", expl, name); 
   uo = uade_fopen(name, "rb");
   file= uo->file;
 
@@ -1064,7 +1073,8 @@ static int uade_safe_load_name(int vaddr, char *name, const char *expl,
 /* this is called for each played song from newcpu.c/m68k_reset() */
 void uade_reset(void)
 {
-#else								 
+#else
+	
 int uade_reset(int sample_rate, char *basedir, char *songmodule)
 {
 	uade_reboot = 1;
@@ -1129,7 +1139,7 @@ int uade_reset(int sample_rate, char *basedir, char *songmodule)
 //fprintf(stderr, "call get_player_name: [%s] [%s] [%s]\n", basedir, song.modulename, song.playername);
 	int stat= get_player_name(basedir , song.modulename, song.playername);
 	if (stat != 0) {
-//		fprintf(stderr, "fail %s / %s\n", song.modulename, song.playername);
+	//	fprintf(stderr, "fail %s / %s\n", song.modulename, song.playername);
 		return stat;
 	} 
 	struct uade_state* state= &_state;	// setup in above get_player_name
@@ -1183,7 +1193,9 @@ int uade_reset(int sample_rate, char *basedir, char *songmodule)
   bytesread = uade_safe_load_name(playeraddr, song.playername, "player", uade_highmem - playeraddr);
 #else   
 	bytesread = uade_safe_load_name(playeraddr, song.modulename[0]?getAbsPath(basedir, song.playername):song.playername, "player", uade_highmem - playeraddr);
-	if (bytesread <1) return (bytesread<0)?-1:1; // async load pending or error	
+	if (bytesread <1) {
+		return (bytesread<0)?-1:1; // async load pending or error
+	}
 #endif	
   if (bytesread > (uade_highmem - playeraddr)) {
     fprintf (stderr, "uadecore: Player %s too big a file (%d bytes).\n", song.playername, bytesread);
@@ -1221,7 +1233,9 @@ int uade_reset(int sample_rate, char *basedir, char *songmodule)
   if (song.modulename[0]) {
     bytesread = uade_safe_load_name(modaddr, song.modulename, "module", uade_highmem - modaddr);
 #ifdef EMSCRIPTEN
-	if (bytesread <1) return (bytesread<0)?-1:1; // async load pending or error	
+	if (bytesread <1) { 
+		return (bytesread<0)?-1:1; // async load pending or error	
+	}
 #endif
     if (bytesread > (uade_highmem - playeraddr)) {
       fprintf (stderr, "uadecore: Module %s too big a file (%d bytes).\n", song.modulename, bytesread);
@@ -1342,7 +1356,9 @@ int uade_reset(int sample_rate, char *basedir, char *songmodule)
 	customreset ();	// reset of the Amiga custom-chips
 	
 	uade_reboot = 0;
-	
+
+	if (state->config.verbose)
+		fprintf(stderr, "started module [%s] using player [%s]\n", strrchr(song.modulename,'/'), song.playername);	
 	return 0;
 #endif
  skiptonextsong:
@@ -1494,6 +1510,8 @@ void uade_song_end(char *reason, int kill_it)
   }
 #else
   quit_program= 1;	// end and let client decide how he wants to proceed
+
+  fprintf(stderr, "%s ended: %s\n", strrchr(song.modulename,'/'), reason);
 #endif
   /* if audio_output is zero (and thus the client is waiting for the first
      sound data block from this song), then start audio output so that the

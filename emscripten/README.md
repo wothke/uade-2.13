@@ -2,8 +2,9 @@
 
 Copyright (C) 2014 Juergen Wothke
 
-This is a JavaScript/WebAudio plugin of UADE. This plugin is designed to work with my 
-generic WebAudio ScriptProcessor music player (see separate project). 
+This plugin is designed to work with my generic WebAudio ScriptProcessor music player (see separate project)
+but the API exposed by the lib can be used in any JavaScipt program (it should look familiar to anyone 
+that has ever done some sort of music player plugin). 
 
 WebUADE is based on "uade-2.13" and this project still contains most of the original files (even if some of them are 
 not used in this context). The various unused "frontend" subfolders and top level make-files have been completely removed. 
@@ -36,8 +37,8 @@ files in the "uade/players" folder (otherwise some of them will get damaged)!
 
 
 ## Dependencies
-The current version requires version 1.02 (older versions will not
-support WebAssembly) of my https://github.com/wothke/webaudio-player.
+The current version requires version 1.03 (older versions will not
+support WebAssembly and remote file loading) of my https://github.com/wothke/webaudio-player.
 
 ## Background information
 
@@ -69,7 +70,11 @@ not the emulator.
 - The callback.js library provides JavaScript functionalities that are directly compilied into the emulator (mainly used 
 for the interactions with the "native" JavaScript portions of the player). 
 
+## Known Limitation
 
+Not all Eagleplayer players will work: Some rely on the Amiga's "audio device" which is NOT available in UADE. 
+
+ 
 ## License
 
 This library is free software; you can redistribute it and/or modify it

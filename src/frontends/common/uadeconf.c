@@ -254,14 +254,27 @@ int uade_set_song_attributes(struct uade_state *state,
 				 us->flags, us->songattributes);
 }
 
+#ifdef EMSCRIPTEN
+extern int uade_request_file(const char *filename); // must be implemented on JavaScript side (also see mycallback.js) 
+#endif
+
 int uade_load_config(struct uade_config *uc, const char *filename)
 {
-#ifndef EMSCRIPTEN
 	char line[256];
 	FILE *f;
 	char *key, *value;
 	int linenumber = 0;
 	enum uade_option opt;
+
+#ifdef EMSCRIPTEN
+	int status= uade_request_file(filename);
+	if (status < 1) {	// handle errors
+		if (status <0) {
+//			fprintf(stderr, "some file is not ready yet: %s\n", modulename);
+			return -1;
+		}
+	}
+#endif
 
 	if ((f = fopen(filename, "r")) == NULL)
 		return 0;
@@ -288,7 +301,6 @@ int uade_load_config(struct uade_config *uc, const char *filename)
 	}
 
 	fclose(f);
-#endif
 	return 1;
 }
 
@@ -312,7 +324,6 @@ int uade_load_initial_config(char *uadeconfname, size_t maxlen,
 			 ucbase->basedir.name);
 		loaded = uade_load_config(uc, uadeconfname);
 	}
-
 	home = uade_open_create_home();
 
 	/* Second, try to load config from ~/.uade2/uade.conf */
