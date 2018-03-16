@@ -933,10 +933,9 @@ static int get_player_name(const char *dir, char *modulename, char *playername) 
 	status= uade_is_our_file(modulename, 0, &_state);	// 1= ok; 0= not; -1=async load
 	if (status < 1) {	// handle errors
 		if (status <0) {
-fprintf(stderr, "some file is not ready yet: %s\n", modulename);
 			return -1;
 		} else {
-			fprintf(stderr, "Unknown format: %s\n", modulename);
+			fprintf(stderr, "Unknown format: %s\n",  strrchr(modulename,'/'));
 			return 1;
 		}
 	}

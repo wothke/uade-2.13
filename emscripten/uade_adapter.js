@@ -21,9 +21,14 @@
  License along with this library; if not, write to the Free Software
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
 */
+UADEBackendAdapter = (function(){ var $this = function (basePath, modlandMode) { 
+	$this.base.call(this, backend_UADE.Module, 2);
+	
+		// aka dumshit ftp.modland.com mode:
+		this.modlandMode= (typeof modlandMode != 'undefined') ? modlandMode : 0;
+		this.originalFile= "";
+		this.modlandMap= {};	// mapping of weird shit filenames used on modland 
 
-UADEBackendAdapter = (function(){ var $this = function (basePath) { 
-	$this.base.call(this, backend_UADE.Module, 2);	
 		this.basePath= basePath;
 		this.isReady= false;
 		
@@ -72,36 +77,13 @@ UADEBackendAdapter = (function(){ var $this = function (basePath) {
 			}
 			return 0;	
 		},
-		mapUri2Fs: function(uri) {		// use extended ASCII that most likely isn't used in filenames
-			// replace chars that cannot be used in file/foldernames
-			var out= uri.replace(/\/\//, "ýý");	
-				out = out.replace(/\?/, "ÿ");
-				out = out.replace(/:/, "þ");
-				out = out.replace(/\*/, "ü");
-				out = out.replace(/"/, "û");
-				out = out.replace(/</, "ù");
-				out = out.replace(/>/, "ø");
-				out = out.replace(/\|/, "÷");
-			return out;
-		},
-		mapFs2Uri: function(fs) {
-			var out= fs.replace(/ýý/, "//");
-				out = out.replace(/ÿ/, "?");
-				out = out.replace(/þ/, ":");
-				out = out.replace(/ü/, "*");
-				out = out.replace(/û/, "\"");
-				out = out.replace(/ù/, "<");
-				out = out.replace(/ø/, ">");
-				out = out.replace(/÷/, "|");
-			return out;
-		},
-		mapUrl: function(filename) {
+		mapUrl: function(filename) {			
 			// used transform the "internal filename" to a valid URL
 			var uri= this.mapFs2Uri(filename);
 			var p= uri.indexOf("@");	// cut off "basePath" for "outside" files
 			if (p >= 0) {
 				uri= uri.substring(p+1);
-			}			
+			}
 			return uri;
 		},
 		/*
@@ -119,9 +101,14 @@ UADEBackendAdapter = (function(){ var $this = function (basePath) {
 			// map URL to some valid FS path (must not contain "//", ":" or "?")
 			// input e.g. "@mod_proxy.php?mod=Fasttracker/4-Mat/bonus.mod" or
 			// "@ftp://foo.com/foo/bar/file.mod" (should avoid name clashes)
+			
 			filename= this.mapUri2Fs("@" + filename);	// treat all songs as "from outside"
 
-			return ((overridePath)?overridePath:basePath) + filename;	// this._basePath ever needed?
+			var f= ((overridePath)?overridePath:basePath) + filename;	// this._basePath ever needed?
+
+			if (this.modlandMode) this.originalFile= f;
+
+			return f;
 		},
 		getPathAndFilename: function(fullFilename) {
 			// input is path+filename combined: base for "registerFileData" & "loadMusicData"
@@ -136,6 +123,26 @@ UADEBackendAdapter = (function(){ var $this = function (basePath) {
 		mapCacheFileName: function (name) {
 			return name;	// might need to use toUpper() in case there are inconsistent refs
 		},
+		mapModlandShit: function (input) {
+			// modland uses wrong (lower) case for practically all sample file names.. damn jerks
+			var output= input.replace(".adsc.AS", ".adsc.as");	// AudioSculpture
+			output= output.replace("/SMP.", "/smp.");	// Dirk Bialluch, Dynamic Synthesizer, Jason Page, Magnetic Fields Packer, Quartet ST, Synth Dream, Thomas Hermann 
+			output= output.replace(".SSD", ".ssd");		// Paul Robotham 
+			output= output.replace("/INS.", "/ins.");	// Richard Joseph  
+			
+			if (this.originalFile.endsWith(".soc") && output.endsWith(".so")) {	// Hippel ST COSO 
+				output= output.substr(0, e.lastIndexOf("/")) + "/smp.set";
+			} else if (this.originalFile.endsWith(".pap") && output.endsWith(".pa")) { // Pierre Adane Packer 
+				output= output.substr(0, output.lastIndexOf("/")) + "/smp.set";
+			} else if (this.originalFile.endsWith(".osp") && output.endsWith(".os")) { // Synth Pack  
+				output= output.substr(0, e.lastIndexOf("/")) + "/smp.set";
+			}
+			
+			if (input != output)	// remember the filename mapping (path is the same)
+				this.modlandMap[output.replace(/^.*[\\\/]/, '')]= input.replace(/^.*[\\\/]/, '');	// needed to create FS expected by "amiga"
+			
+			return output;
+		},		
 		mapBackendFilename: function (name) {
 			// triggered by UADE whenever it tries to load a file, the input "name" is
 			// composed of UADE's basePath combined with the file that uade is looking for:
@@ -143,17 +150,20 @@ UADEBackendAdapter = (function(){ var $this = function (basePath) {
 			// that might be done here.. i.e. in order to function the file must be installed in the FS
 			// under exactly that path/name!)
 			var input= this.Module.Pointer_stringify(name);
+			
+			if (this.modlandMode) input= this.mapModlandShit(input);
+		
 			return input;
 		},
 		registerFileData: function(pathFilenameArray, data) {
 			// NOTE: UADE uses the "C fopen" based impl to access all files, i.e. the files 
-			// MUST BE properly provided within the FS (the local player cache here is nothing more than a 
+			// MUST BE properly provided within the FS (the local cache within the player is nothing more than a 
 			// convenience shortcut to detect if data is  already available - but irrelevant to UADE)
 			
 			// input: the path is fixed to the basePath & the filename is actually still a path+filename
 			var path= pathFilenameArray[0];
 			var filename= pathFilenameArray[1];
-					
+
 			// MANDATORTY to move any path info still present in the "filename" to "path"
 			var tmpPpathFilenameArray = new Array(2);	// do not touch original IO param			
 			var p= filename.lastIndexOf("/");
@@ -165,6 +175,11 @@ UADEBackendAdapter = (function(){ var $this = function (basePath) {
 				tmpPpathFilenameArray[1]= filename;
 			}
 
+			if (this.modlandMode) {
+				if (typeof this.modlandMap[tmpPpathFilenameArray[1]] != 'undefined') {
+					tmpPpathFilenameArray[1]= this.modlandMap[tmpPpathFilenameArray[1]];	// reverse map
+				}
+			}
 			// setup data in our virtual FS (the next access should then be OK)
 			return this.registerEmscriptenFileData(tmpPpathFilenameArray, data);
 		},
@@ -239,4 +254,3 @@ UADEBackendAdapter = (function(){ var $this = function (basePath) {
 		},
 		
 	});	return $this; })();
-	
