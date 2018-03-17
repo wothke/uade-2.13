@@ -128,14 +128,14 @@ UADEBackendAdapter = (function(){ var $this = function (basePath, modlandMode) {
 			var output= input.replace(".adsc.AS", ".adsc.as");	// AudioSculpture
 			output= output.replace("/SMP.", "/smp.");	// Dirk Bialluch, Dynamic Synthesizer, Jason Page, Magnetic Fields Packer, Quartet ST, Synth Dream, Thomas Hermann 
 			output= output.replace(".SSD", ".ssd");		// Paul Robotham 
-			output= output.replace("/INS.", "/ins.");	// Richard Joseph  
+			output= output.replace(".INS", ".ins");	// Richard Joseph  
 			
 			if (this.originalFile.endsWith(".soc") && output.endsWith(".so")) {	// Hippel ST COSO 
-				output= output.substr(0, e.lastIndexOf("/")) + "/smp.set";
+				output= output.substr(0, output.lastIndexOf("/")) + "/smp.set";
 			} else if (this.originalFile.endsWith(".pap") && output.endsWith(".pa")) { // Pierre Adane Packer 
 				output= output.substr(0, output.lastIndexOf("/")) + "/smp.set";
 			} else if (this.originalFile.endsWith(".osp") && output.endsWith(".os")) { // Synth Pack  
-				output= output.substr(0, e.lastIndexOf("/")) + "/smp.set";
+				output= output.substr(0, output.lastIndexOf("/")) + "/smp.set";
 			}
 			
 			if (input != output)	// remember the filename mapping (path is the same)
