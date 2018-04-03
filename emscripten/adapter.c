@@ -35,6 +35,19 @@ extern char *song_info[4];
 
 extern void uade_teardown (void);
 extern void m68k_run_1 (void);
+extern void uade_set_panning(float val);
+extern void uade_apply_effects(int16_t * samples, int frames);
+
+/*
+* @param val use range -1.0 to 1.0
+*/
+static int emu_set_panning(float val) __attribute__((noinline));
+static int EMSCRIPTEN_KEEPALIVE emu_set_panning(float val)
+{
+	// uade's panning range is 0.0-2.0 (where 1.0 means mono)	
+	uade_set_panning(val+1.0);
+	return 0;
+}
 
 
 int emu_is_exit(void) __attribute__((noinline));
@@ -61,7 +74,7 @@ int EMSCRIPTEN_KEEPALIVE emu_compute_audio_samples() {
 	//   - amiga may still be initializing and respecive "file loads" may fail - in which
 	//     case we need to abort and restart the initialization
 	//   - program may terminate before the buffer is full 
-	struct uade_sample_data *sample_data; 
+	struct uade_sample_data *data; 
 	
 	// NOTE: the 'uade_reboot' used to be at via a command from the GUI.. it
 	// is no longer used..
@@ -70,8 +83,9 @@ int EMSCRIPTEN_KEEPALIVE emu_compute_audio_samples() {
 		m68k_run_1 ();		// run emulator step
 		
 		// check if the above processing provided us with a result
-		sample_data= get_new_samples();	
-		if (sample_data) {
+		data= get_new_samples();	
+		if (data) {
+			uade_apply_effects(sample_data.buf, emu_get_audio_buffer_length()>> 2);
 			return 0;
 		}
 	

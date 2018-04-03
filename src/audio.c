@@ -529,54 +529,54 @@ void update_audio (void)
     unsigned long n_cycles = cycles - last_audio_cycles;
 
     while (n_cycles > 0) {
-	unsigned long best_evtime = n_cycles + 1;
-	int i;
-	unsigned long rounded;
-	float f;
+		unsigned long best_evtime = n_cycles + 1;
+		int i;
+		unsigned long rounded;
+		float f;
 
-	for (i = 0; i < 4; i++) {
-	    if (audio_channel[i].state != 0 && best_evtime > audio_channel[i].evtime)
-		best_evtime = audio_channel[i].evtime;
-	}
+		for (i = 0; i < 4; i++) {
+			if (audio_channel[i].state != 0 && best_evtime > audio_channel[i].evtime)
+			best_evtime = audio_channel[i].evtime;
+		}
 
-	/* next_sample_evtime >= 0 so floor() behaves as expected */
-	rounded = floorf(next_sample_evtime);
-	if ((next_sample_evtime - rounded) >= 0.5)
-	    rounded++;
+		/* next_sample_evtime >= 0 so floor() behaves as expected */
+		rounded = floorf(next_sample_evtime);
+		if ((next_sample_evtime - rounded) >= 0.5)
+			rounded++;
 
-	if (best_evtime > rounded)
-	    best_evtime = rounded;
+		if (best_evtime > rounded)
+			best_evtime = rounded;
 
-	if (best_evtime > n_cycles)
-	    best_evtime = n_cycles;
-	
-	/* Decrease time-to-wait counters */
-	next_sample_evtime -= best_evtime;
+		if (best_evtime > n_cycles)
+			best_evtime = n_cycles;
+		
+		/* Decrease time-to-wait counters */
+		next_sample_evtime -= best_evtime;
 
-	/* sample_prehandler makes it possible to compute effects with
-	   accuracy of one bus cycle. sample_handler is only called when
-	   a sample is outputted. */
-	if (sample_prehandler != NULL)
-	    sample_prehandler(best_evtime);
+		/* sample_prehandler makes it possible to compute effects with
+		   accuracy of one bus cycle. sample_handler is only called when
+		   a sample is outputted. */
+		if (sample_prehandler != NULL)
+			sample_prehandler(best_evtime);
 
-	for (i = 0; i < 4; i++)
-	    audio_channel[i].evtime -= best_evtime;
+		for (i = 0; i < 4; i++)
+			audio_channel[i].evtime -= best_evtime;
 
-	n_cycles -= best_evtime;
+		n_cycles -= best_evtime;
 
-	/* Test if new sample needs to be outputted */
-	if (rounded == best_evtime) {
-	    /* Before the following addition, next_sample_evtime is in range
-	       [-0.5, 0.5) */
-	    next_sample_evtime += sample_evtime_interval;
-	    (*sample_handler) ();
-	}
+		/* Test if new sample needs to be outputted */
+		if (rounded == best_evtime) {
+			/* Before the following addition, next_sample_evtime is in range
+			   [-0.5, 0.5) */
+			next_sample_evtime += sample_evtime_interval;
+			(*sample_handler) ();
+		}
 
-	/* Call audio state machines if needed */
-	for (i = 0; i < 4; i++) {
-	    if (audio_channel[i].evtime == 0 && audio_channel[i].state != 0)
-		audio_handler(i);
-	}
+		/* Call audio state machines if needed */
+		for (i = 0; i < 4; i++) {
+			if (audio_channel[i].evtime == 0 && audio_channel[i].state != 0)
+			audio_handler(i);
+		}
     }
 
     last_audio_cycles = cycles - n_cycles;

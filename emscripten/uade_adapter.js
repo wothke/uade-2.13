@@ -198,16 +198,23 @@ UADEBackendAdapter = (function(){ var $this = function (basePath, modlandMode) {
 			}
 			return ret;
 		},
+		setPanning: function(value) {
+			var pan= Math.min(Math.max(-1.0, value), 1.0);
+			this.Module.ccall('emu_set_panning', 'number', ['number'], [pan]);
+		},
 		evalTrackOptions: function(options) {
 			this.initSongAttributes();
 			
 			if ((typeof options.timeout != 'undefined') && (options.timeout >0)) {
 				ScriptNodePlayer.getInstance().setPlaybackTimeout(options.timeout*1000);
 			}			
+			if ((typeof options.pan != 'undefined')) {
+				this.setPanning(options.pan);
+			}			
 			if(options.track >0) {
 				// songs without multiple subsongs seem to take this very badly.. (e.g. 'powerdrift')
 				return this.Module.ccall('emu_set_subsong', 'number', ['number'], [options.track]);
-			}
+			}			
 			return 0;
 		},				
 		teardown: function() {

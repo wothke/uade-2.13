@@ -899,7 +899,27 @@ void emsCopyPath(char *dest, int maxsize, char*src) {
 	strncpy(dest, src, srcLen); dest[srcLen]= 0 ;
 }
 
-static 
+#ifdef EMSCRIPTEN
+void uade_set_panning(float val) {
+	struct uade_state *state= &_state;
+
+	if (state) {
+		struct uade_effect *effects = &state->effects;
+		if (effects) {
+			uade_effect_pan_set_amount(effects, val);
+			uade_effect_enable(effects, UADE_EFFECT_PAN);				
+		}
+	}	
+}
+
+void uade_apply_effects(int16_t * samples, int frames) {
+	struct uade_state *state= &_state;
+	if (state && &state->effects) {
+		uade_effect_run(&state->effects, samples, frames);
+	}
+}
+#endif
+ 
 // @return -1=need async load; 0= ok; 1= not ok
 static int get_player_name(const char *dir, char *modulename, char *playername) {
 	emsCopyPath(info_text, MAX_INFO_TXT, modulename);
