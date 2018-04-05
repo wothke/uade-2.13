@@ -107,6 +107,7 @@ mergeInto(LibraryManager.library, {
 		ret["minText"]= minText;
 		ret["maxText"]= maxText;
 		ret["currText"]= currText;
+		ret["infoText"]= infoText;
 		
 		return window['songUpdateCallback'](ret);
 	},

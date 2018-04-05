@@ -229,6 +229,7 @@ UADEBackendAdapter = (function(){ var $this = function (basePath, modlandMode) {
 			this.songInfo.mins= "";
 			this.songInfo.maxs= "";
 			this.songInfo.curs= "";			
+			this.songInfo.infoText= "";			
 		},
 		getSongInfoMeta: function() {
 			return {info1: String,
@@ -236,7 +237,8 @@ UADEBackendAdapter = (function(){ var $this = function (basePath, modlandMode) {
 					info3: String,
 					mins: String,
 					maxs: String,
-					curs: String 
+					curs: String,
+					infoText: String 
 					};
 		},
 		updateSongInfo: function(filename, result) {
@@ -246,6 +248,7 @@ UADEBackendAdapter = (function(){ var $this = function (basePath, modlandMode) {
 			result.mins= this.songInfo.minText;
 			result.maxs= this.songInfo.maxText;
 			result.curs= this.songInfo.currText;
+			result.infoText= this.songInfo.infoText;
 		},
 		// --------------------------- async file loading stuff -------------------------
 		handleBackendSongAttributes: function(backendAttr, target) {
@@ -256,7 +259,8 @@ UADEBackendAdapter = (function(){ var $this = function (basePath, modlandMode) {
 			this.songInfo.mins= backendAttr.minText;
 			this.songInfo.maxs= backendAttr.maxText;
 			this.songInfo.curs= backendAttr.currText;
-			
+			this.songInfo.infoText= backendAttr.infoText;
+
 			this.updateSongInfo("", target);		
 		},
 		
