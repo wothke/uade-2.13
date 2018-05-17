@@ -59,6 +59,7 @@
 var playerControls;
 var	songDisplay;
 	
+	
 // configure what music infos to display in SongDisplay
 UADEDisplayAccessor = (function(){ var $this = function (doGetSongInfo) {
 		$this.base.call(this, doGetSongInfo);
@@ -151,8 +152,8 @@ function init() {
 					var options= {};
 					// 'filename' may contain additional track and timeout info
 					var arr= someSong.split(";");	
-					options.currentSubSong= arr.length>1?parseInt(arr[1]):0;
-					options.currentTimeout= arr.length>2?parseInt(arr[2]):-1;
+					options.track= arr.length>1?parseInt(arr[1]):0;
+					options.timeout= arr.length>2?parseInt(arr[2]):-1;
 
 					return [arr[0], options];
 				})
@@ -178,13 +179,14 @@ function init() {
 		
   <p>2014 by Juergen Wothke  (The source code can be found <a target="_blank" href="https://github.com/wothke/">here</a>.)</p>
  
-  <p>This page does not use any plugins but is based exclusively on the draft version WebAudio API. 
-  You'll need Chrome or Firefox to make it play the music. The visual effects 
-  work best in Chrome. (If Firefox passes out - press 'reload'... it's experimental.)
+  <p>This page does not use any plugins but is based exclusively on the WebAudio API. 
+  You'll need a modern browser with WebAudio support to make it play the music (The page has been successfully tested using Firefox, 
+  Chrome and Edge).
   
   <p>Contrarry to most other HTML5 based pages out there, the music here is NOT based on  
-  OscillatorNode based waveforms or the playback of some sampledata file. Instead the samples here 
-  are completely calculated within JavaScript by running the xmp emulator logic.</p>  
+  OscillatorNode based waveforms or the playback of some mp3 file. Instead the samples here 
+  are completely calculated within JavaScript by running the uade emulator logic (respective music files are
+  therefore much smaller than say mp3 - ranging from single digit to several hundred kilobytes).</p>  
  
   <p>Credits: Many people have contributed to 'UADE' and I cannot name them all here. I had to tinker a bit with their code to get an architecture suitable for the web but once again <a href="https://github.com/kripken/emscripten/wiki" target="_blank">emscripten</a> then did the heavy lifting compiling the C code into JavaScript.</p>
  
@@ -194,13 +196,16 @@ function init() {
 </details>
 <aside></aside>
 <section>
-  <div id="logo" class="logo">
-	<div id="moz-reflect-logo"><canvas  id="logoCanvas"  width="600" height="280"></canvas></div>
+  <div id="logo">
+		<!-- in new Chrome the SHIT reflections disapear dependig on the canvas height.. what a fucking joke -->
+		<div id="moz-reflect-logo"><canvas  id="logoCanvas"  width="300" height="100"></canvas></div>	
   </div>
-  <div id="spectrum" class="spectrum">
-  	<div id="moz-reflect-spectrum"><canvas id="spectrumCanvas" width="512" height="200"></canvas></div>
+  
+  <div id="spectrum" >
+		<!-- use "hight" greater than 80 and the fucking reflection is gone.. FUCK YOU IDIOTS -->
+		<div id="moz-reflect-spectrum"><canvas id="spectrumCanvas" width="800" height="80"></canvas></div>
   </div>
-  <div id="drop" class="drop"><img src="warp.gif" width=200 height=200/></div><!--see BasicPlayerControls-->
+  <div id="drop" class="drop"><img src="warp.gif" width=500 height=300/></div><!--see BasicPlayerControls-->
 </section>
 </body>
 </html>

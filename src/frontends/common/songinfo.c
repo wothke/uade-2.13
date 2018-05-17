@@ -327,7 +327,7 @@ static void process_digi_mod(char *credits, size_t credits_len,
 static void process_custom(char *credits, size_t credits_len,
 			   unsigned char *buf, size_t len)
 {
-	char tmpstr[1024];
+	char tmpstr[8192];
 	unsigned char *hunk;
 	unsigned char *tag_table;
 	int hunk_size;

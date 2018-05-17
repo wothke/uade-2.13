@@ -312,7 +312,7 @@ void uade_send_debug(const char *fmt, ...)
 #ifdef EMSCRIPTEN
 // we could use uade_song2 struct instead... but for the JavaScipt side
 // handling the below is simpler:
-#define MAX_INFO_TXT 512
+#define MAX_INFO_TXT 8192
 char info_text[MAX_INFO_TXT +1];	// unfortunately there is no well structured info..
 
 char inf_mins[10];	
