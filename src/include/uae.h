@@ -8,8 +8,9 @@
 
 #ifdef EMSCRIPTEN
 extern void uade_teardown (void);
-extern int uade_initialize (const char*);
-extern int uade_reset (int,char*,char*);
+extern int uade_boot(char *basedir);
+extern int uade_main (const char*);
+extern int uade_reset (int,char*,char*,char);
 extern int uade_compute_audio_samples();
 
 extern char* uade_get_audio_buffer(void);

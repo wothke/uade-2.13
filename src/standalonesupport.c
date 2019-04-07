@@ -1,8 +1,8 @@
 /* Standalone/Emscripten support tools for uadecore.
 
-   Copyright 2014 (C) Juergen Wothke
-   
-   This module is licensed under the GNU GPL.
+   Replaces the implementations from unixsupport.c
+
+   Copyright 2014 (C) Juergen Wothke   
 */
 
 #include <stdlib.h>
@@ -26,7 +26,7 @@
 
 
 #ifdef EMSCRIPTEN
-extern int uade_request_file(const char *filename); // must be implemented on JavaScript side (also see mycallback.js) 
+extern int uade_request_file(const char *filename); // must be implemented on JavaScript side (also see callback.js) 
 extern long uade_request_file_size(const char *filename);
 #endif
 
@@ -49,7 +49,7 @@ struct AFILE * uade_fopen(const char *filename, const char *mode) {
 		f= 0;
 	} else {	
 		snprintf(virt_fs_path, 512, "/%s", filename);	
-		f =fopen(virt_fs_path, mode);	// in Emscripten this will use the virtual in memory FS
+		f =fopen(virt_fs_path, mode);	// in Emscripten this will use the virtual "in-memory FS"
 //		fprintf(stderr, "loading of: [%s] %s\n", virt_fs_path, f?"succeeded":"failed (must NEVER happen!)");	
 	}
 	open_stat.async_status= status;
@@ -87,7 +87,7 @@ int is_amiga_file_not_ready(void) {
 									
 extern void emsCopyPath(char *dest, int maxsize, char*src);
 							
-/* opens file in amiga namespace */
+/* opens file in amiga namespace; replaces impl from unixsupport.c (which isn't used!) */
 struct AFILE * uade_open_amiga_file(char *aname, const char *playerdir)
 {
   char *separator;
@@ -120,19 +120,27 @@ struct AFILE * uade_open_amiga_file(char *aname, const char *playerdir)
 	memcpy(remainder, ptr+len+1, len2);
 	remainder[len2] = 0;
 	
-    if (!strcasecmp(dirname, "ENV")) {
-      snprintf(dirname, sizeof(dirname), "%s/players/ENV/%s", playerdir, remainder);  	// we only have the EaglePlayer..
-   } else if (!strcasecmp(dirname, "S")) {
-      snprintf(dirname, sizeof(dirname), "%s/players/S/%s", playerdir, remainder);
+	if (!strcasecmp(dirname, "ENV")) {
+	  snprintf(dirname, sizeof(dirname), "%s/players/ENV/%s", playerdir, remainder);  	// we only have the EaglePlayer..
+	} else if (!strcasecmp(dirname, "S")) {
+      snprintf(dirname, sizeof(dirname), "%s/players/S/%s", playerdir, remainder);	  
     } else {
       fprintf(stderr, "uade: open_amiga_file: unknown amiga volume (%s)\n", aname);
       return NULL;
     }	
     /* fprintf(stderr, "uade: opening from dir %s\n", dirname); */
   } else {
-	emsCopyPath(dirname, sizeof(dirname), aname);
-//	snprintf(dirname, sizeof(dirname), aname);	// e.g. railroad tycoon.dl
+	if (!strncasecmp(ptr, "AYPlayers", 9)) {
+		// HACK: special case of a player ("PlayAY") trying to load additional files (e.g. "AYPlayers/ZXAYEMUL")..
+		// note: there is currently NO general solution for this kind of scenario (regular PC apps
+		// would probably search the PATH but that option is not available here)
+		snprintf(dirname, sizeof(dirname), "%s/players/%s", playerdir, ptr);	// redirect to players folder
+	} else {
+		emsCopyPath(dirname, sizeof(dirname), aname);
+	//	snprintf(dirname, sizeof(dirname), aname);	// e.g. railroad tycoon.dl
+	}
   }
+  
 
 //fprintf(stderr, "amiga out: opening [%s]\n", dirname);
 

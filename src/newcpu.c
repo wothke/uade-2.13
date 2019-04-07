@@ -1208,34 +1208,34 @@ static int do_specialties (void)
 {
     while (regs.spcflags & SPCFLAG_STOP) {
         if (uade_reboot)
-	    return 1;
-	do_cycles (4);
-	if (regs.spcflags & (SPCFLAG_INT | SPCFLAG_DOINT)){
-	    int intr = intlev ();
-	    regs.spcflags &= ~(SPCFLAG_INT | SPCFLAG_DOINT);
-	    if (intr != -1 && intr > regs.intmask) {
-		Interrupt (intr);
-		regs.stopped = 0;
-		regs.spcflags &= ~SPCFLAG_STOP;
-	    }
-	}
+			return 1;
+		do_cycles (4);
+		if (regs.spcflags & (SPCFLAG_INT | SPCFLAG_DOINT)){
+			int intr = intlev ();
+			regs.spcflags &= ~(SPCFLAG_INT | SPCFLAG_DOINT);
+			if (intr != -1 && intr > regs.intmask) {
+				Interrupt (intr);
+				regs.stopped = 0;
+				regs.spcflags &= ~SPCFLAG_STOP;
+			}
+		}
     }
 
     if (regs.spcflags & SPCFLAG_DOINT) {
-	int intr = intlev ();
-	regs.spcflags &= ~SPCFLAG_DOINT;
-	if (intr != -1 && intr > regs.intmask) {
-	    Interrupt (intr);
-	    regs.stopped = 0;
-	}
+		int intr = intlev ();
+		regs.spcflags &= ~SPCFLAG_DOINT;
+		if (intr != -1 && intr > regs.intmask) {
+			Interrupt (intr);
+			regs.stopped = 0;
+		}
     }
     if (regs.spcflags & SPCFLAG_INT) {
-	regs.spcflags &= ~SPCFLAG_INT;
-	regs.spcflags |= SPCFLAG_DOINT;
+		regs.spcflags &= ~SPCFLAG_INT;
+		regs.spcflags |= SPCFLAG_DOINT;
     }
     if (regs.spcflags & (SPCFLAG_BRK | SPCFLAG_MODE_CHANGE)) {
-	regs.spcflags &= ~(SPCFLAG_BRK | SPCFLAG_MODE_CHANGE);
-	return 1;
+		regs.spcflags &= ~(SPCFLAG_BRK | SPCFLAG_MODE_CHANGE);
+		return 1;
     }
     return 0;
 }
@@ -1324,7 +1324,7 @@ void m68k_go (void)
   update_68k_cycles ();
 
   while (quit_program == 0) {
-    uade_reset ();
+    uade_reset ();	// EMSCRIPTEN note: below inits have directly been added into uade_reset
     m68k_reset ();
     customreset ();
 

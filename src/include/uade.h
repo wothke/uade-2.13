@@ -50,9 +50,10 @@ void uade_send_debug(const char *fmt, ...);
 void uade_get_amiga_message(void);
 void uade_handle_r_state(void);
 #ifdef EMSCRIPTEN
+void set_subsong(int subsong);
 void change_subsong(int subsong);
 int uade_option(const char *basedir);
-int uade_reset(int,char*,char*);
+int uade_reset(int,char*,char*, char);
 char** uade_get_song_info(void);
 int alloc_dummy_song(struct uade_state *state, const char *filename);
 int uade_set_silence_timeout(struct uade_config *uc, const char *value);

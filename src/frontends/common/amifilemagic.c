@@ -438,7 +438,7 @@ static int mod32check(unsigned char *buf, size_t bufsize, size_t realfilesize,
 
     if (calculated_size > realfilesize) {
         fprintf(stderr, "uade: file is truncated and won't get played (%s)\n", path);
-      return MOD_UNDEFINED;
+//      return MOD_UNDEFINED;
     }
 
     if (calculated_size < realfilesize) {

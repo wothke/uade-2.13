@@ -7,14 +7,29 @@ mergeInto(LibraryManager.library, {
 	},	
 	uade_request_file_size: function(name) {
 		return window['fileSizeRequestCallback'](name);
-	},	
+	},
 	uade_notify_song_update: function(i, min, max, curr) {
 		var infoText= Pointer_stringify(i);	
 		var minText= Pointer_stringify(min);	
 		var maxText= Pointer_stringify(max);	
 		var currText= Pointer_stringify(curr);	
+		
+		// extract original text from base64 encoded (without the encoding EMSCRIPTEN would
+		// damage the original encoding beyond repair..)
+		
+		// no idea how the utility logic can be inlined here or in pre.js without the fucking
+		// closure compiler messing everything up.. FUCKING POS
 
-		var arr= infoText.split("\n");// title, prefix, modulename, authorname, specialinfo, version, credits, remarks
+		var rawBytes = window["base64Decode"](infoText);
+		var arr = window["getStringifiedLines"](rawBytes);
+		
+		infoText="";
+		for (var i= 0; i<arr.length; i++) {
+			infoText+= arr[i]+"<br>";
+		}
+		
+		// title, prefix, modulename, authorname, specialinfo, version, credits, remarks
+		// (the below logic works very badly for CUSTOM files..)
 		// ---------------------- extract tagged infos ---------------------------------------
 		var i, dic= new Object();
 		var key= null;
@@ -22,9 +37,21 @@ mergeInto(LibraryManager.library, {
 		for (i= 0; i<arr.length; i++) {
 			var line= arr[i];
 			// one liner's
-			if (startsWith(line, "File name:")) {
+				// .cus file special handling 
+			if (startsWith(line, "Music:")) {
+				var a= dic['authorname']? dic['authorname']: []
+				a.unshift(line.substring(6).trim());				
+				dic['authorname']= a;
+			} else if (startsWith(line, "DeliCustom:")) {		// .cus hack
+				var a= dic['specialinfo']? dic['specialinfo']: []
+				a.unshift(line.substring(11).trim());				
+				dic['specialinfo']= a;
+			}  
+				
+				// "regular" file
+			else if (startsWith(line, "File name:")) {
 				var a= dic['title']? dic['title']: []
-				a.push(line.split("/").pop().trim());				
+				a.unshift(line.substring(10).trim());				
 				dic['title']= a;
 			} else if (startsWith(line, "Song title:")) {
 				var a= dic['title']? dic['title']: []
@@ -34,6 +61,7 @@ mergeInto(LibraryManager.library, {
 				dic['prefix']= line.substring(12).trim();
 			} else {
 				// multi line
+				// note for most modules: "MODULENAME" should be used as a replacement for the "title"
 				var k= startsWith2(line, ["MODULENAME:", "AUTHORNAME:", "SPECIALINFO:", "VERSION:", "CREDITS:", "Remarks:"]);
 				if (k) {
 					// new section
@@ -59,39 +87,42 @@ mergeInto(LibraryManager.library, {
 		// ---------------------- try to make sense of structured info -----------------------
 		var limit= 3
 		var infoLines= [];
-		var keysLeft= Object.keys(dic).length - 2;	// there is always a title and prefix - which are handled later
 		
 		// try to construct a 3 line info with what we've got
-		while ((infoLines.length<=limit) && (keysLeft >0)) {
+		
+		// there is always a title and prefix
+		if (dic['title'] && !('modulename' in dic))
+			infoLines.push(dic['title'].shift() +" ("+ dic['prefix'] +")");
+		
+		while ((infoLines.length <= limit)) {
 			if ('modulename' in dic) {
 				infoLines.push(dic['modulename'].shift());
-				delete dic['modulename']; keysLeft--;
+				delete dic['modulename'];
 			} else if('authorname' in dic) {
 				infoLines.push(dic['authorname'].shift());
-				delete dic['authorname']; keysLeft--;
+				delete dic['authorname'];
 			} else if('specialinfo' in dic) {
 				infoLines.push(dic['specialinfo'].shift());
-				delete dic['specialinfo']; keysLeft--;
+				delete dic['specialinfo'];
 			} else if('version' in dic) {
 				infoLines.push(dic['version'].shift());
 				if (dic['version'].length == 0) {
-					delete dic['version']; keysLeft--; 
+					delete dic['version'];
 				}
 			} else if('credits' in dic) {
 				infoLines.push(dic['credits'].shift());
 				if (dic['credits'].length == 0) {
-					delete dic['credits']; keysLeft--; 
+					delete dic['credits'];
 				}
 			} else if('remarks' in dic) {
 				infoLines.push(dic['remarks'].shift());
 				if (dic['remarks'].length == 0) {
-					delete dic['remarks']; keysLeft--;
+					delete dic['remarks'];
 				}
-			} 
-		}
-		if (infoLines.length < limit) {	// last resort
-			if (dic['title'])
-				infoLines.push(dic['title'].shift() +" ("+ dic['prefix'] +")");
+			} else {
+				// nothing "known" left
+				break;
+			}
 		}
 		
 		var info1= infoLines.length>0 ? infoLines[0]: "";
@@ -109,6 +140,6 @@ mergeInto(LibraryManager.library, {
 		ret["currText"]= currText;
 		ret["infoText"]= infoText;
 		
-		return window['songUpdateCallback'](ret);
+		return window['songUpdateCallback'](ret);		// directly push the info to the backendadapter
 	},
 });

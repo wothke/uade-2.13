@@ -23,16 +23,18 @@
 
 #include <emscripten.h>
 
+/*
 #ifdef EMSCRIPTEN
 #define EMSCRIPTEN_KEEPALIVE __attribute__((used))
 #else
 #define EMSCRIPTEN_KEEPALIVE
 #endif
-
+*/
 extern int quit_program;
 extern struct uade_sample_data sample_data;
-extern char *song_info[4];
+extern unsigned int song_mins, song_maxs, song_curs;
 
+extern int uade_boot(char *basedir);
 extern void uade_teardown (void);
 extern void m68k_run_1 (void);
 extern void uade_set_panning(float val);
@@ -76,16 +78,16 @@ int EMSCRIPTEN_KEEPALIVE emu_compute_audio_samples() {
 	//   - program may terminate before the buffer is full 
 	struct uade_sample_data *data; 
 	
-	// NOTE: the 'uade_reboot' used to be at via a command from the GUI.. it
-	// is no longer used..
+	// NOTE: the 'uade_reboot' used to be triggered via a command from the GUI
+	// illegal ops may trigger quit_program so a reboot cannot fix all..)
 	
 	while (quit_program == 0) {
-		m68k_run_1 ();		// run emulator step
+		m68k_run_1();		// run emulator step	(see m68k_go in original server)
 		
 		// check if the above processing provided us with a result
 		data= get_new_samples();	
 		if (data) {
-			uade_apply_effects(sample_data.buf, emu_get_audio_buffer_length()>> 2);
+			uade_apply_effects((int16_t *)sample_data.buf, emu_get_audio_buffer_length()>> 2);
 			return 0;
 		}
 	
@@ -124,16 +126,47 @@ int EMSCRIPTEN_KEEPALIVE emu_prepare(char *basedir)
 	return 0;
 }
 
+static int _last_sample_rate;	// convenience hack
 int emu_init(int sample_rate, char *basedir, char *songmodule) __attribute__((noinline));
 int EMSCRIPTEN_KEEPALIVE emu_init(int sample_rate, char *basedir, char *songmodule)
 {
-	return uade_reset(sample_rate, basedir, songmodule);
+	_last_sample_rate= sample_rate;
+	
+	int r= uade_boot(basedir);
+	if (r != 0)	return r;	// error or pending load
+	
+	// problem: UADE may only return track info when the song emu has been 
+	// run for a while.. or it my never do so for some types of songs
+	
+	// this "dry run" call will run the emulation as long as the info is available
+	r= uade_reset(sample_rate, basedir, songmodule, 1);
+	return r;
 }
 
 static int emu_set_subsong(int subsong) __attribute__((noinline));
 static int EMSCRIPTEN_KEEPALIVE emu_set_subsong(int subsong)
 {
-	change_subsong(subsong);
+	// after the earlier emu_init the info track info should now be available
+	
+	// previous dry run succeeded.. now repeat clean reset (or some 
+	// songs will not work correctly after the "dry run")
+    uade_teardown();
+	uade_reset(_last_sample_rate, 0, 0, 0);	// reboot (using path info used during emu_init)
+
+	// FIXME: might just use a "track change" and avoid the "expensive" uade_reset()? 
+
+	if (subsong < 0) {	
+		// keep default
+	} else {
+		if (subsong < song_mins) subsong= song_mins;
+		if (subsong > song_maxs) subsong= song_maxs;
+
+		//  seems "change" is used for "initialized core"
+		//change_subsong(subsong);
+		
+		// while this is used for some "uninitialized" scenario...? also seems to work fine..
+		set_subsong(subsong);	// this works for silkwork.vss whereas change_subsong doesn't
+	}
 	return 0;
 }
 

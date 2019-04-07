@@ -121,7 +121,13 @@ UADEBackendAdapter = (function(){ var $this = function (basePath, modlandMode) {
 			return [this.basePath, fullFilename];
 		},
 		mapCacheFileName: function (name) {
-			return name;	// might need to use toUpper() in case there are inconsistent refs
+			// problem: in some folders, modland uses one "shared lib" file (e.g. "smp.set") that is 
+			// accessed via different "alias names". when the next alias name is used the file 
+			// will already be found in the cache => but for the song to work the respective file data
+			// must be registered in the FS under the additional alias (was solved by adding "alias" 
+			// support in the scriptnode player)
+			
+			return name;
 		},
 		mapModlandShit: function (input) {
 			// modland uses wrong (lower) case for practically all sample file names.. damn jerks
@@ -129,6 +135,10 @@ UADEBackendAdapter = (function(){ var $this = function (basePath, modlandMode) {
 			output= output.replace("/SMP.", "/smp.");	// Dirk Bialluch, Dynamic Synthesizer, Jason Page, Magnetic Fields Packer, Quartet ST, Synth Dream, Thomas Hermann 
 			output= output.replace(".SSD", ".ssd");		// Paul Robotham 
 			output= output.replace(".INS", ".ins");	// Richard Joseph  
+			output= output.replace("/mcS.", "/mcs.");	// Mark Cooksey Old  
+			
+			var o= this.originalFile.substr(this.originalFile.lastIndexOf("/")+1);
+			var ot= output.substr(output.lastIndexOf("/")+1);
 			
 			if (this.originalFile.endsWith(".soc") && output.endsWith(".so")) {	// Hippel ST COSO 
 				output= output.substr(0, output.lastIndexOf("/")) + "/smp.set";
@@ -136,8 +146,11 @@ UADEBackendAdapter = (function(){ var $this = function (basePath, modlandMode) {
 				output= output.substr(0, output.lastIndexOf("/")) + "/smp.set";
 			} else if (this.originalFile.endsWith(".osp") && output.endsWith(".os")) { // Synth Pack  
 				output= output.substr(0, output.lastIndexOf("/")) + "/smp.set";
+			} if (o.startsWith("sdr.") && ot.startsWith("smp.")) { // Synth Dream  (always use the "set".. other songs don't seem to play properly anyway - even in uade123)
+				output= output.substr(0, output.lastIndexOf("/")) + "/smp.set";
 			}
-			
+			// map:  actual file name -> "wrong" name used on emu side
+			// e.g.  "smp.set"  ->      "dyter07 ongame01.os"
 			if (input != output)	// remember the filename mapping (path is the same)
 				this.modlandMap[output.replace(/^.*[\\\/]/, '')]= input.replace(/^.*[\\\/]/, '');	// needed to create FS expected by "amiga"
 			
@@ -152,7 +165,7 @@ UADEBackendAdapter = (function(){ var $this = function (basePath, modlandMode) {
 			var input= this.Module.Pointer_stringify(name);
 			
 			if (this.modlandMode) input= this.mapModlandShit(input);
-		
+
 			return input;
 		},
 		registerFileData: function(pathFilenameArray, data) {
@@ -165,23 +178,26 @@ UADEBackendAdapter = (function(){ var $this = function (basePath, modlandMode) {
 			var filename= pathFilenameArray[1];
 
 			// MANDATORTY to move any path info still present in the "filename" to "path"
-			var tmpPpathFilenameArray = new Array(2);	// do not touch original IO param			
+			var tmpPathFilenameArray = new Array(2);	// do not touch original IO param			
 			var p= filename.lastIndexOf("/");
 			if (p > 0) {
-				tmpPpathFilenameArray[0]= path + filename.substring(0, p);
-				tmpPpathFilenameArray[1]= filename.substring(p+1);
+				tmpPathFilenameArray[0]= path + filename.substring(0, p);
+				tmpPathFilenameArray[1]= filename.substring(p+1);
 			} else  {
-				tmpPpathFilenameArray[0]= path;
-				tmpPpathFilenameArray[1]= filename;
+				tmpPathFilenameArray[0]= path;
+				tmpPathFilenameArray[1]= filename;
 			}
 
 			if (this.modlandMode) {
-				if (typeof this.modlandMap[tmpPpathFilenameArray[1]] != 'undefined') {
-					tmpPpathFilenameArray[1]= this.modlandMap[tmpPpathFilenameArray[1]];	// reverse map
+				if (typeof this.modlandMap[tmpPathFilenameArray[1]] != 'undefined') {
+					tmpPathFilenameArray[1]= this.modlandMap[tmpPathFilenameArray[1]];	// reverse map
+					
+					// e.g. saves the file under the name "dyter07 ongame01.os" (but
+					// with the "URL-PATH". e.g. proxy.phpÿmod=Synth Pack/Karsten Obarski/Dyter-07)
 				}
 			}
 			// setup data in our virtual FS (the next access should then be OK)
-			return this.registerEmscriptenFileData(tmpPpathFilenameArray, data);
+			return this.registerEmscriptenFileData(tmpPathFilenameArray, data);
 		},
 		loadMusicData: function(sampleRate, path, filename, data, options) {
 			if (path.substr(-1) === "/") path= path.substring(0, path.length-1);
@@ -203,20 +219,17 @@ UADEBackendAdapter = (function(){ var $this = function (basePath, modlandMode) {
 			this.Module.ccall('emu_set_panning', 'number', ['number'], [pan]);
 		},
 		evalTrackOptions: function(options) {
-			this.initSongAttributes();
-			
 			if ((typeof options.timeout != 'undefined') && (options.timeout >0)) {
 				ScriptNodePlayer.getInstance().setPlaybackTimeout(options.timeout*1000);
 			}			
 			if ((typeof options.pan != 'undefined')) {
 				this.setPanning(options.pan);
-			}			
-			if(options.track >0) {
-				// songs without multiple subsongs seem to take this very badly.. (e.g. 'powerdrift')
-				return this.Module.ccall('emu_set_subsong', 'number', ['number'], [options.track]);
-			}			
-			return 0;
-		},				
+			}
+			if ((typeof options.track === 'undefined')) {
+				options.track= -1;	// use lowest or default (if available in format)
+			}
+			return this.Module.ccall('emu_set_subsong', 'number', ['number'], [options.track]);
+		},
 		teardown: function() {
 //			this.Module.ccall('emu_teardown', 'number'); for some reason wasn't used in the old version
 		},		
@@ -242,16 +255,19 @@ UADEBackendAdapter = (function(){ var $this = function (basePath, modlandMode) {
 					};
 		},
 		updateSongInfo: function(filename, result) {
+			if (typeof this.songInfo == 'undefined') this.initSongAttributes()
+				
 			result.info1= this.songInfo.info1;
 			result.info2= this.songInfo.info2;
 			result.info3= this.songInfo.info3;;			
-			result.mins= this.songInfo.minText;
-			result.maxs= this.songInfo.maxText;
-			result.curs= this.songInfo.currText;
+			result.mins= this.songInfo.mins;
+			result.maxs= this.songInfo.maxs;
+			result.curs= this.songInfo.curs;
 			result.infoText= this.songInfo.infoText;
 		},
 		// --------------------------- async file loading stuff -------------------------
 		handleBackendSongAttributes: function(backendAttr, target) {
+			this.initSongAttributes();
 			// UADE "asynchronously" pushes a respective update..
 			this.songInfo.info1= backendAttr.info1;
 			this.songInfo.info2= backendAttr.info2;
@@ -260,7 +276,7 @@ UADEBackendAdapter = (function(){ var $this = function (basePath, modlandMode) {
 			this.songInfo.maxs= backendAttr.maxText;
 			this.songInfo.curs= backendAttr.currText;
 			this.songInfo.infoText= backendAttr.infoText;
-
+			
 			this.updateSongInfo("", target);		
 		},
 		

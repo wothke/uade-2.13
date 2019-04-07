@@ -166,13 +166,20 @@ static int get_info_for_ep(char *dst, char *src, int maxlen)
       ret = 0;
     }
   } else {
-    uade_send_debug("Unknown eagleplayer attribute queried: %s\n", src);
+    uade_send_debug("Unknown eagleplayer attribute queried: %s", src);
   }
   return ret;
 }
 
 #ifndef EMSCRIPTEN
 static 
+#else
+void set_subsong(int subsong)
+{
+  uade_put_long(SCORE_SET_SUBSONG, 1);
+  uade_put_long(SCORE_SUBSONG, subsong);
+}
+
 #endif
 void change_subsong(int subsong)
 {
@@ -267,7 +274,7 @@ void uade_check_sound_buffers(int bytes)
   if (sample_data.alloclen < bytes) {
 	if (sample_data.buf) free(sample_data.buf);
 	
-	sample_data.buf= malloc(sizeof(char)*bytes);
+	sample_data.buf= malloc(sizeof(char) * bytes);
   }
   memcpy(sample_data.buf, sndbuffer, bytes);  
   sample_data.buflen= bytes;
@@ -292,17 +299,20 @@ void uade_check_sound_buffers(int bytes)
   }
 }
 
-
 /* Send debug messages back to uade frontend, which either prints
    the message for user or not. "-v" option can be used in uade123 to see all
    these messages. */
 void uade_send_debug(const char *fmt, ...)
 {
-#ifndef EMSCRIPTEN
   char dmsg[256];
   va_list ap;
   va_start (ap, fmt);
   vsnprintf(dmsg, sizeof(dmsg), fmt, ap);
+#ifdef EMSCRIPTEN
+  	struct uade_state *state= &_state;
+	if (state->config.verbose)
+		fprintf(stderr, "%s\n", dmsg);	// with the different msg source it seems better to handle NL here
+#else 
   if (uade_send_string(UADE_REPLY_MSG, dmsg, &uadeipc)) {
     fprintf(stderr, "uadecore %s:%d: Could not send debug message.\n", __FILE__, __LINE__);
   }
@@ -314,12 +324,17 @@ void uade_send_debug(const char *fmt, ...)
 // handling the below is simpler:
 #define MAX_INFO_TXT 8192
 char info_text[MAX_INFO_TXT +1];	// unfortunately there is no well structured info..
+const unsigned int encodedMaxLen= ((MAX_INFO_TXT/3)+1)*4;
+char base64_info_text[encodedMaxLen];
 
 char inf_mins[10];	
 char inf_maxs[10];	
 char inf_curs[10];	
 
-char *song_info[4] = {info_text,inf_mins,inf_maxs,inf_curs};
+unsigned int song_mins, song_maxs, song_curs;	// for easier handling on adapter.c side
+
+char *song_info[4] = {base64_info_text,inf_mins,inf_maxs,inf_curs};
+char _meta_data_ready= 0;
 #endif
 
 void uade_get_amiga_message(void)
@@ -363,12 +378,21 @@ void uade_get_amiga_message(void)
       maxs = curs;
     }
 	
-#ifdef EMSCRIPTEN	
+#ifdef EMSCRIPTEN
+	song_mins= mins;
+	song_maxs= maxs;
+	song_curs= curs;
 	snprintf(inf_mins, sizeof inf_mins, "%d", mins);
 	snprintf(inf_maxs, sizeof inf_maxs, "%d", maxs);
 	snprintf(inf_curs, sizeof inf_curs, "%d", curs);
-		
-	uade_notify_song_update(info_text, inf_mins, inf_maxs, inf_curs);
+
+//fprintf(stderr, "amiga song info: %d %d %d\n", mins, curs, maxs);
+	
+	// easier to use JavaScript to parse that info_text crap
+	// CAUTION: the EMSCRIPTEN String handling will mess up any non-ASCII encoded
+	//          data - so it must be encoded here..
+	uade_notify_song_update(base64_info_text, inf_mins, inf_maxs, inf_curs);		
+	_meta_data_ready= 1;
 #else
     um->msgtype = UADE_REPLY_SUBSONG_INFO;
     um->size = 12;
@@ -384,22 +408,25 @@ void uade_get_amiga_message(void)
     break;
 
   case AMIGAMSG_PLAYERNAME:
+//    strlcpy(tmpstr, (char *) get_real_address(0x204), sizeof tmpstr);
+//fprintf(stderr, "amiga playername: %s\n", tmpstr);	
 #ifndef EMSCRIPTEN
-    strlcpy(tmpstr, (char *) get_real_address(0x204), sizeof tmpstr);
     uade_send_string(UADE_REPLY_PLAYERNAME, tmpstr, &uadeipc);
 #endif
     break;
 
   case AMIGAMSG_MODULENAME:
+//    strlcpy(tmpstr, (char *) get_real_address(0x204), sizeof tmpstr);
+//fprintf(stderr, "amiga modulename: %s\n", tmpstr);	
 #ifndef EMSCRIPTEN
-    strlcpy(tmpstr, (char *) get_real_address(0x204), sizeof tmpstr);
     uade_send_string(UADE_REPLY_MODULENAME, tmpstr, &uadeipc);
 #endif
     break;
 
   case AMIGAMSG_FORMATNAME:
+//    strlcpy(tmpstr, (char *) get_real_address(0x204), sizeof tmpstr);
+//fprintf(stderr, "amiga formatname: %s\n", tmpstr);	
 #ifndef EMSCRIPTEN	
-    strlcpy(tmpstr, (char *) get_real_address(0x204), sizeof tmpstr);
     uade_send_string(UADE_REPLY_FORMATNAME, tmpstr, &uadeipc);
 #endif
     break;
@@ -455,6 +482,7 @@ void uade_get_amiga_message(void)
       uade_put_long(0x20C, len);
       uade_send_debug("load success: %s ptr 0x%x size 0x%x", nameptr, dst, len);
     } else {
+		// testcase: AYPlayers/ZXAYEMUL is indirectly loaded from players/PlayAY
       uade_send_debug("load: file not found: %s", nameptr);
     }
     break;
@@ -544,7 +572,7 @@ void uade_get_amiga_message(void)
     }
     srcstr = (char *) get_real_address(src);
     dststr = (char *) get_real_address(dst);
-    uade_send_debug("score issued an info request: %s (maxlen %d)\n", srcstr, len);
+    uade_send_debug("score issued an info request: %s (maxlen %d)", srcstr, len);
     len = get_info_for_ep(dststr, srcstr, len);
     /* Send printable debug */
     do {
@@ -566,7 +594,7 @@ void uade_get_amiga_message(void)
       } else {
 	space[maxspace - 1] = 0;
       }
-      uade_send_debug("reply to score: %s (total len %d)\n", space, len);
+      uade_send_debug("reply to score: %s (total len %d)", space, len);
     } while (0);
     uade_put_long(0x20C, len);
     break;
@@ -871,7 +899,7 @@ int alloc_dummy_song(struct uade_state *state, const char *filename)
 	strlcpy(us->module_filename, filename, sizeof us->module_filename);
 
 	us->playtime = -1;
-	us->min_subsong = us->max_subsong = us->cur_subsong = -1;
+	us->min_subsong = us->max_subsong = us->cur_subsong = 0;	// will be reset in uade_reset()!
 	
 	state->song = us;
 	return 1;
@@ -900,6 +928,46 @@ void emsCopyPath(char *dest, int maxsize, char*src) {
 }
 
 #ifdef EMSCRIPTEN
+// hack to pass all those non ASCII-encoded info texts safely to the JavaScript side:
+static const char *chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+void base64_encode(unsigned char* input, unsigned char* output, unsigned int len) {
+  int i, j = 0;
+  unsigned char arr3[3];
+  unsigned char arr4[4];
+  int offset= 0;
+  
+  while (len--) {
+    arr3[i++] = *(input++);
+    if (i == 3) {
+      arr4[0] = (arr3[0] & 0xfc) >> 2;
+      arr4[1] = ((arr3[0] & 0x03) << 4) + ((arr3[1] & 0xf0) >> 4);
+      arr4[2] = ((arr3[1] & 0x0f) << 2) + ((arr3[2] & 0xc0) >> 6);
+      arr4[3] = arr3[2] & 0x3f;
+
+      for(i = 0; (i <4) ; i++) {
+        output[offset++]= chars[arr4[i]];
+		}
+      i = 0;
+    }
+  }
+  if (i) {
+    for(j = i; j < 3; j++) {
+      arr3[j] = '\0';
+	}
+    arr4[0] = ( arr3[0] & 0xfc) >> 2;
+    arr4[1] = ((arr3[0] & 0x03) << 4) + ((arr3[1] & 0xf0) >> 4);
+    arr4[2] = ((arr3[1] & 0x0f) << 2) + ((arr3[2] & 0xc0) >> 6);
+
+    for (j = 0; (j < i + 1); j++) {
+      output[offset++]= chars[arr4[j]];
+	}
+    while((i++ < 3)) {
+      output[offset++]= '=';
+	}
+  }
+  output[offset++]= 0;	// add proper string terminator
+}
+
 void uade_set_panning(float val) {
 	struct uade_state *state= &_state;
 
@@ -919,10 +987,12 @@ void uade_apply_effects(int16_t * samples, int frames) {
 	}
 }
 #endif
- 
+
+
 // @return -1=need async load; 0= ok; 1= not ok
 static int get_player_name(const char *dir, char *modulename, char *playername) {
 	emsCopyPath(info_text, MAX_INFO_TXT, modulename);
+	
 //	snprintf(info_text, MAX_INFO_TXT, modulename);	// doesn't work for special char paths..
 	
 	memset(&_state, 0, sizeof _state);	// arrgh..ugly side-effect
@@ -950,6 +1020,7 @@ static int get_player_name(const char *dir, char *modulename, char *playername) 
 	
 	alloc_dummy_song(&_state, modulename);
 	
+	// note: only place where the EaglePlayer "is our file" function is used...
 	status= uade_is_our_file(modulename, 0, &_state);	// 1= ok; 0= not; -1=async load
 	if (status < 1) {	// handle errors
 		if (status <0) {
@@ -978,15 +1049,21 @@ static int get_player_name(const char *dir, char *modulename, char *playername) 
     uade_set_effects(&_state);
 
 	
-	if (uade_song_info(info_text, sizeof info_text, info_text, UADE_MODULE_INFO) == 0) {
-//		fprintf(stderr, "info: [%s]\n", info_text);				   
+	if (uade_song_info(info_text, sizeof info_text, info_text, UADE_MODULE_INFO) == 0) {	// UGLY SHIT using info_text as I/O param...
+//		fprintf(stderr, "info: [%s]\n", info_text);
+#ifdef EMSCRIPTEN
+		base64_encode(info_text, base64_info_text, strlen(info_text));
+	} else {
+		base64_info_text[0]; // make sure there is no text to decode
+		
+#endif
 	}
-	
 	return 0;
 }
 
 // migrated from uadecontrol.c
-static void uade_filter_command(struct uade_state *state)
+
+static void uade_filter_command(struct uade_state *state)	// see uade_send_filter_command
 {
 	struct uade_config *uadeconf = &state->config;
 
@@ -1002,7 +1079,7 @@ static void uade_filter_command(struct uade_state *state)
     audio_set_filter(filter_type, filter_state);
 }
 
-static void uade_resampling_command(struct uade_config *uadeconf)
+static void uade_resampling_command(struct uade_config *uadeconf)	// see send_resampling_command
 {
 	char *mode = uadeconf->resampler;
 	if (mode != NULL) {
@@ -1015,7 +1092,7 @@ static void uade_resampling_command(struct uade_config *uadeconf)
 	}
 }
 
-static int uade_set_ep_options(struct uade_ep_options *eo)
+static int uade_set_ep_options(struct uade_ep_options *eo)	// see send_ep_options
 {
 	if (eo && eo->o && (eo->s > 0)) {
 		size_t i = 0;
@@ -1031,10 +1108,14 @@ static int uade_set_ep_options(struct uade_ep_options *eo)
 	return 0;
 }
 
-static void applySettings(struct uade_state *state) {
+// below is sequence from uade_song_initialization (without initial IPC handshakes
+// with uade_reset)
+static void ems_song_initialization(struct uade_state *state) {
 	struct uade_config *uc = &state->config;
 	struct uade_song *us = state->song;
 
+	us->silence_count = 0;
+	
 	uade_filter_command(state);
 
 	uade_resampling_command(uc);
@@ -1094,17 +1175,47 @@ void uade_reset(void)
 {
 #else
 	
-int uade_reset(int sample_rate, char *basedir, char *songmodule)
-{
+int uade_boot(char *basedir) {	
+	// purpose of dry_run is to retrieve the meta info (before track selection is started)
+	song_mins= song_maxs= song_curs= _meta_data_ready= 0;	
+	
+	// initial start sequence (base for uade_reset)
 	uade_reboot = 1;
 	quit_program = 0;
 	
-	if (uade_initialize(basedir) < 0) return -1;
-	
+	if (uade_main(basedir) < 0) return -1;	
+	/*
+	* until here the setup should correspond to what m68k_go did before loop - one loop would then 
+	start with the "reboot" sequence (all of which not is included in uade_reset):
+	    uade_reset ();
+		m68k_reset ();
+		customreset ();
+	and afterwards the emu ran..	
+	*/
 	snprintf(uade_player_dir, sizeof uade_player_dir, basedir);
 	
-	
 	uade_read_size= sndbufsize<<1;	// "request" audio data
+	return 0;
+}
+
+
+#define MAX_LAST_LEN 256
+char last_basedir[MAX_LAST_LEN +1];
+char last_songmodule[MAX_LAST_LEN +1];
+
+int uade_reset(int sample_rate, char *basedir, char *songmodule, char dry_run)
+{
+	// ease reuse for "track switch"
+	if (basedir)
+		emsCopyPath(last_basedir, MAX_LAST_LEN, basedir);
+	else 
+		basedir= last_basedir;
+	
+	if (songmodule)
+		emsCopyPath(last_songmodule, MAX_LAST_LEN, songmodule);
+	else 
+		songmodule= last_songmodule;
+		
 #endif
 
   /* don't load anything under 0x1000 (execbase top at $1000) */
@@ -1336,7 +1447,7 @@ int uade_reset(int sample_rate, char *basedir, char *songmodule)
   }
 
 #ifdef EMSCRIPTEN
-  uade_audio_output = 1;	
+  uade_audio_output = 0;	// amiga side reports when it is playing..
 #else
   uade_reboot = 0;
 
@@ -1364,20 +1475,49 @@ int uade_reset(int sample_rate, char *basedir, char *songmodule)
 #else
   set_sound_freq(sample_rate);
 #endif
-  
   epoptionsize = 0;
 #ifndef EMSCRIPTEN
   return;
 #else
-	applySettings(state);	
+	// what uadecontrol does once the above handshake was successful
+	ems_song_initialization(state);		
 	
+	/*
+	* together with the uade_reset the below 2 calls were what 
+	* performed a reboot in the old impl..
+	*/
 	m68k_reset ();
 	customreset ();	// reset of the Amiga custom-chips
 	
 	uade_reboot = 0;
 
 	if (state->config.verbose)
-		fprintf(stderr, "started module [%s] using player [%s]\n", strrchr(song.modulename,'/'), song.playername);	
+		fprintf(stderr, "started module [%s] using player [%s]\n", strrchr(song.modulename,'/'), song.playername);
+	
+	/*
+	* when the code gets here then there may still be "player" code that has NOT
+	* been loaded yet!	example: "Dyter-07/dyter07 title.osp" 
+	*/
+	if (dry_run && !_meta_data_ready) {
+		long limit= 10000000;	// 	make sure it terminates
+		while(((quit_program|uade_reboot) == 0) && ((limit--) > 0)) {
+			// problem: there seem to be songs that never report any meta data..
+			m68k_run_1 ();		// run until song reports the meta info.. (change_subsong depends on it)
+			get_new_samples();  // just ignore the output
+			
+			if ((quit_program != 0) && is_amiga_file_not_ready()) {
+				quit_program= 0;	// this needs to be repeated when all the files are ready..
+				return -1;
+			}
+			
+			if (_meta_data_ready || uade_audio_output) break;
+		}
+		if(_meta_data_ready) { 
+			// fprintf(stderr, "track detect SUCCESS\n");
+		} else {
+			// fprintf(stderr, "track detect FAIL\n");
+		}
+	}
 	return 0;
 #endif
  skiptonextsong:
@@ -1412,6 +1552,7 @@ static void uade_put_long(int addr, int val)
     return;
   }
   p = (uae_u32 *) get_real_address(addr);
+  
   *p = htonl(val);
 }
 
@@ -1509,7 +1650,6 @@ void uade_set_automatic_song_end(int song_end_possible)
 {
   uade_put_long(SCORE_HAVE_SONGEND, song_end_possible);
 }
-
 
 /* if kill_it is zero, uade may switch to next subsong. if kill_it is non-zero
    uade will always switch to next song (if any) */

@@ -432,7 +432,26 @@ static void process_dm2_mod(char *credits, size_t credits_len,
 	snprintf(tmpstr, sizeof tmpstr, "\nRemarks:\n%s", buf + 0x148);
 	strlcat(credits, tmpstr, credits_len);
 }
+#ifdef EMSCRIPTEN
+#define MAX_FILENAME_LEN 256
+char file_id[MAX_FILENAME_LEN +1];
+static char* get_file_identifer(char *modulename) {
+	int len= strlen(modulename);
+	char *start = strrchr(modulename, '/');
+	
+	if (!start) {
+		start= modulename;
+	} else {
+		len-= ((void*)start)-((void*)modulename);
+		start+= 1;
+	}
+	if (len > MAX_FILENAME_LEN) len= MAX_FILENAME_LEN;
+		
+	snprintf(file_id, len, (const char*)start);
+	return file_id;
+}
 
+#endif
 static int process_module(char *credits, size_t credits_len, char *filename)
 {
 //fprintf(stderr, "process_module [%s][%d][%s]\n", credits, credits_len, filename);
@@ -483,8 +502,8 @@ static int process_module(char *credits, size_t credits_len, char *filename)
 		free(buf);
 		return 0;
 	}
-
-	snprintf(tmpstr, sizeof tmpstr, "UADE2 MODINFO:\n\nFile name:      %s\nFile length:    %zd bytes\n", filename, modfilelen);
+	
+	snprintf(tmpstr, sizeof tmpstr, "MODINFO:\n\nFile name:      %s\nFile length:    %zd bytes\n", get_file_identifer(filename), modfilelen);
 	strlcpy(credits, tmpstr, credits_len);
 
 	/* Get filetype in pre */

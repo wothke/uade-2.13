@@ -313,6 +313,7 @@ static int ufcompare(const void *a, const void *b)
 	return strcasecmp(ua->extension, ub->extension);
 }
 
+//note: in later UADE versions this API seems to have moved to uadestate.c/uade.h!!
 int uade_is_our_file(const char *modulename, int scanmode,
 		     struct uade_state *state)
 {	

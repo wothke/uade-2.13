@@ -284,14 +284,17 @@ void write_log_standard (const char *fmt, ...)
 
 #ifdef EMSCRIPTEN
 
-void uade_teardown (void) {
+void uade_teardown (void) {	// end-sequence used in the original version of uade_main (see below) 
     close_sound ();
     dump_counts ();
 }
 
 int uade_is_initialized= 0;
-int uade_initialize (const char *basedir) {
-	if (uade_is_initialized) 
+
+// only performed once (successfully) then the same setup could be 
+// used for many songs.. (unless there is a crash)
+int uade_main (const char *basedir) {
+	if (uade_is_initialized)
 		return 0;
 
     default_prefs (&currprefs);
@@ -304,13 +307,13 @@ int uade_main (int argc, char **argv)
 
     uade_option (argc, argv);
 
-    machdep_init ();
+    machdep_init ();		// is a no-op
 
 #endif
     if (! setup_sound ()) {
-	fprintf (stderr, "Sound driver unavailable: Sound output disabled\n");
-	currprefs.produce_sound = 0;
-	exit(-1);
+		fprintf (stderr, "Sound driver unavailable: Sound output disabled\n");
+		currprefs.produce_sound = 0;
+		exit(-1);
     }
 
     init_sound();
@@ -319,8 +322,7 @@ int uade_main (int argc, char **argv)
     changed_prefs = currprefs;
     check_prefs_changed_cpu();
 
-    memory_init ();
-
+	memory_init ();
     custom_init (); /* Must come after memory_init */
 
     reset_frame_rate_hack ();
@@ -335,8 +337,9 @@ int uade_main (int argc, char **argv)
 
     close_sound ();
     dump_counts ();
-#else	
-  reset_frame_rate_hack ();	
+#else
+   // init sequence from original m68k_go(() - without the "reboot" related last part 
+  reset_frame_rate_hack ();
   update_68k_cycles ();
   
   uade_is_initialized= 1;
