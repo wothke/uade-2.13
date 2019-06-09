@@ -139,6 +139,7 @@ int EMSCRIPTEN_KEEPALIVE emu_init(int sample_rate, char *basedir, char *songmodu
 	// run for a while.. or it my never do so for some types of songs
 	
 	// this "dry run" call will run the emulation as long as the info is available
+	// (but this means the emu must be reset before actually playing this song - see below)
 	r= uade_reset(sample_rate, basedir, songmodule, 1);
 	return r;
 }
@@ -152,7 +153,7 @@ static int EMSCRIPTEN_KEEPALIVE emu_set_subsong(int subsong)
 	// songs will not work correctly after the "dry run")
     uade_teardown();
 	uade_reset(_last_sample_rate, 0, 0, 0);	// reboot (using path info used during emu_init)
-
+	
 	// FIXME: might just use a "track change" and avoid the "expensive" uade_reset()? 
 
 	if (subsong < 0) {	

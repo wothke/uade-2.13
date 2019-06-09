@@ -106,8 +106,10 @@ UADEBackendAdapter = (function(){ var $this = function (basePath, modlandMode) {
 
 			var f= ((overridePath)?overridePath:basePath) + filename;	// this._basePath ever needed?
 
-			if (this.modlandMode) this.originalFile= f;
-
+			if (this.modlandMode) {
+				f= decodeURI(f);	// e.g. see TFMX songs Huelsbeck with spaces
+				this.originalFile= f;
+			}
 			return f;
 		},
 		getPathAndFilename: function(fullFilename) {
@@ -130,6 +132,8 @@ UADEBackendAdapter = (function(){ var $this = function (basePath, modlandMode) {
 			return name;
 		},
 		mapModlandShit: function (input) {
+			var input= decodeURI(input);	// replace escape sequences... 
+			
 			// modland uses wrong (lower) case for practically all sample file names.. damn jerks
 			var output= input.replace(".adsc.AS", ".adsc.as");	// AudioSculpture
 			output= output.replace("/SMP.", "/smp.");	// Dirk Bialluch, Dynamic Synthesizer, Jason Page, Magnetic Fields Packer, Quartet ST, Synth Dream, Thomas Hermann 
@@ -146,8 +150,12 @@ UADEBackendAdapter = (function(){ var $this = function (basePath, modlandMode) {
 				output= output.substr(0, output.lastIndexOf("/")) + "/smp.set";
 			} else if (this.originalFile.endsWith(".osp") && output.endsWith(".os")) { // Synth Pack  
 				output= output.substr(0, output.lastIndexOf("/")) + "/smp.set";
-			} if (o.startsWith("sdr.") && ot.startsWith("smp.")) { // Synth Dream  (always use the "set".. other songs don't seem to play properly anyway - even in uade123)
+			} else if (o.startsWith("sdr.") && ot.startsWith("smp.")) { // Synth Dream  (always use the "set".. other songs don't seem to play properly anyway - even in uade123)
 				output= output.substr(0, output.lastIndexOf("/")) + "/smp.set";
+			} else if (this.originalFile.endsWith(".ymst") && output.endsWith("replay")) { // YMST 
+				var idx= output.lastIndexOf("/");
+				var fn= output.substr(idx).toLowerCase().replace(" ", "_");	// see inconsistent zout-game.ymst 
+				output= output.substr(0, idx) + fn;
 			}
 			// map:  actual file name -> "wrong" name used on emu side
 			// e.g.  "smp.set"  ->      "dyter07 ongame01.os"
