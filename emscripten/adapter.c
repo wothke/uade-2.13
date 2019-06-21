@@ -23,13 +23,6 @@
 
 #include <emscripten.h>
 
-/*
-#ifdef EMSCRIPTEN
-#define EMSCRIPTEN_KEEPALIVE __attribute__((used))
-#else
-#define EMSCRIPTEN_KEEPALIVE
-#endif
-*/
 extern int quit_program;
 extern struct uade_sample_data sample_data;
 extern unsigned int song_mins, song_maxs, song_curs;

@@ -84,6 +84,16 @@ UADEBackendAdapter = (function(){ var $this = function (basePath, modlandMode) {
 			if (p >= 0) {
 				uri= uri.substring(p+1);
 			}
+			if (this.modlandMode) {
+				if (uri.indexOf("/TFMX ST/")>0) {
+					// restore original/incorect name for retrieval
+					uri= uri.replace("/mdst.", "/mdat.");
+				}
+				if (uri.indexOf("/Zoundmonitor/")>0) {
+					// restore original/incorect name for retrieval
+					uri= uri.replace(".zm", ".sng");
+				}
+			}
 			return uri;
 		},
 		/*
@@ -107,8 +117,16 @@ UADEBackendAdapter = (function(){ var $this = function (basePath, modlandMode) {
 			var f= ((overridePath)?overridePath:basePath) + filename;	// this._basePath ever needed?
 
 			if (this.modlandMode) {
-				f= decodeURI(f);	// e.g. see TFMX songs Huelsbeck with spaces
+				f= decodeURI(f);	// e.g. see TFMX songs Huelsbeck with spaces				
 				this.originalFile= f;
+				
+				// these files need the correct prefix for UADE (or any other player) to handle them
+				if (f.indexOf("/TFMX ST/")>0) {
+					f= f.replace("/mdat.", "/mdst.");
+				}
+				if (f.indexOf("/Zoundmonitor/")>0) {
+					f= f.replace(".sng", ".zm");
+				}			
 			}
 			return f;
 		},
@@ -143,7 +161,7 @@ UADEBackendAdapter = (function(){ var $this = function (basePath, modlandMode) {
 			
 			var o= this.originalFile.substr(this.originalFile.lastIndexOf("/")+1);
 			var ot= output.substr(output.lastIndexOf("/")+1);
-			
+
 			if (this.originalFile.endsWith(".soc") && output.endsWith(".so")) {	// Hippel ST COSO 
 				output= output.substr(0, output.lastIndexOf("/")) + "/smp.set";
 			} else if (this.originalFile.endsWith(".pap") && output.endsWith(".pa")) { // Pierre Adane Packer 
@@ -156,7 +174,15 @@ UADEBackendAdapter = (function(){ var $this = function (basePath, modlandMode) {
 				var idx= output.lastIndexOf("/");
 				var fn= output.substr(idx).toLowerCase().replace(" ", "_");	// see inconsistent zout-game.ymst 
 				output= output.substr(0, idx) + fn;
-			}
+			} else if (ot.startsWith("smpl.mdst.")) { // TFMX_ST 
+				output= output.replace("smpl.mdst.", "smpl.");
+			} else if (output.startsWith("mdat.") && (output.indexOf("/TFMX ST/")>0)) {
+				// these ST files need the correct prefix for UADE (or any other player) to handle them
+				output= output.replace("/mdat.", "/mdst.");				
+			} else if (output.endsWith(".snd") && (output.indexOf("/Zoundmonitor/")>0)) {
+				// these ST files need the correct prefix for UADE (or any other player) to handle them
+				output= output.replace(".sng", ".zm");
+			} 
 			// map:  actual file name -> "wrong" name used on emu side
 			// e.g.  "smp.set"  ->      "dyter07 ongame01.os"
 			if (input != output)	// remember the filename mapping (path is the same)

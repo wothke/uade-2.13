@@ -320,12 +320,30 @@ void uade_send_debug(const char *fmt, ...)
 }
 
 #ifdef EMSCRIPTEN
+
+static int icon_addr= 0;
+static int icon_len= 0;
+
+uae_u8 *strbuf(uae_u8 *haystack, int len, uae_u8 *key) {	// file might contain 0 so string funcs are useless
+	int klen = strlen((const char*)key);
+	
+	for (int i= 0; i<(len-klen); i++) {
+		for (int j= 0; j<klen; j++) {
+			if (haystack[i+j] != key[j]) break;
+			
+			if (j == klen-1) {
+				// matched complete key				
+				return haystack + i + strlen(key) + 1;	// skip "=" to point directly to the value
+			}
+		}
+	}
+	return 0;	
+}
+
 // we could use uade_song2 struct instead... but for the JavaScipt side
 // handling the below is simpler:
 #define MAX_INFO_TXT 8192
 char info_text[MAX_INFO_TXT +1];	// unfortunately there is no well structured info..
-const unsigned int encodedMaxLen= ((MAX_INFO_TXT/3)+1)*4;
-char base64_info_text[encodedMaxLen];
 
 char inf_mins[10];	
 char inf_maxs[10];	
@@ -333,7 +351,7 @@ char inf_curs[10];
 
 unsigned int song_mins, song_maxs, song_curs;	// for easier handling on adapter.c side
 
-char *song_info[4] = {base64_info_text,inf_mins,inf_maxs,inf_curs};
+char *song_info[4] = {info_text,inf_mins,inf_maxs,inf_curs};
 char _meta_data_ready= 0;
 #endif
 
@@ -389,9 +407,8 @@ void uade_get_amiga_message(void)
 //fprintf(stderr, "amiga song info: %d %d %d\n", mins, curs, maxs);
 	
 	// easier to use JavaScript to parse that info_text crap
-	// CAUTION: the EMSCRIPTEN String handling will mess up any non-ASCII encoded
-	//          data - so it must be encoded here..
-	uade_notify_song_update(base64_info_text, inf_mins, inf_maxs, inf_curs);		
+	// CAUTION: the EMSCRIPTEN default String handling will mess up any non-ASCII encoded data
+	uade_notify_song_update(info_text, inf_mins, inf_maxs, inf_curs);		
 	_meta_data_ready= 1;
 #else
     um->msgtype = UADE_REPLY_SUBSONG_INFO;
@@ -460,7 +477,63 @@ void uade_get_amiga_message(void)
     }
      uade_song_end("score died", 1);
     break;
+	
+#ifdef EMSCRIPTEN
+  case AMIGAMSG_ICON_TOOLTYPE: {
+		// get key at 0x204 (key pointer) and write result to address pointed by 0x208 
+		src = uade_get_u32(0x204);
+		if (!uade_valid_string(src)) {
+			fprintf(stderr, "uadecore: Icon key in invalid address range.\n");
+			break;
+		}	
+	
+		uae_u8 *key = get_real_address(src);
+		uae_u8 *haystack = get_real_address(icon_addr);
+		uae_u8 *found= strbuf(haystack, icon_len, key);
+		
+		unsigned int src_result= 0;
+		if (found) {			
+			int offset = ((unsigned int)found - (unsigned int)haystack);			
+			src_result = icon_addr + offset;
+		}
+		uade_put_long(0x208, src_result);
+			
+		break;
+  }
+  case AMIGAMSG_ICON_LOAD: {
+		// poor man's impl used for "PokeyNoise"
+		// load a file named at 0x204 (name pointer) to address pointed by 0x208 and write the length to 0x20C
+		src = uade_get_u32(0x204);
+		if (!uade_valid_string(src)) {
+			fprintf(stderr, "uadecore: Load icon name in invalid address range.\n");
+			break;
+		}
+		nameptr = get_real_address(src);
 
+		char iconfile[PATH_MAX];
+		snprintf(iconfile, PATH_MAX, "%s.info", nameptr);
+
+		uo= uade_open_amiga_file((char *) iconfile, uade_player_dir);
+		if ((file = uo->file)) {
+			icon_addr = uade_get_u32(0x208);	// hack: one icon should be enough  
+			icon_len = uade_safe_load(icon_addr, file, uade_highmem - icon_addr);
+
+			fclose(file); file = NULL;
+			uade_put_long(0x20C, icon_len);
+//			uade_send_debug("load icon success: %s ptr 0x%x size 0x%x", iconfile, icon_addr, icon_len);
+			
+			// get some meta info
+			uae_u8 *haystack = get_real_address(icon_addr);
+			uae_u8 *name= strbuf(haystack, icon_len, "NAME");
+			uae_u8 *creator= strbuf(haystack, icon_len, "CREATOR");
+			uae_u8 *copyright= strbuf(haystack, icon_len, "COPYRIGHT");	// will also match the "#COPYRIGHT" variation used by some songs
+			
+			// format apready used by other crappy modules
+			snprintf(info_text, sizeof info_text, "MODULENAME:\r%s\rAUTHORNAME:\r%s\rCREDITS:\r%s\r", name, creator, copyright);
+		}
+		break;
+  }
+#endif
   case AMIGAMSG_LOADFILE:
     /* load a file named at 0x204 (name pointer) to address pointed by
        0x208 and insert the length to 0x20C */
@@ -928,45 +1001,6 @@ void emsCopyPath(char *dest, int maxsize, char*src) {
 }
 
 #ifdef EMSCRIPTEN
-// hack to pass all those non ASCII-encoded info texts safely to the JavaScript side:
-static const char *chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-void base64_encode(unsigned char* input, unsigned char* output, unsigned int len) {
-  int i, j = 0;
-  unsigned char arr3[3];
-  unsigned char arr4[4];
-  int offset= 0;
-  
-  while (len--) {
-    arr3[i++] = *(input++);
-    if (i == 3) {
-      arr4[0] = (arr3[0] & 0xfc) >> 2;
-      arr4[1] = ((arr3[0] & 0x03) << 4) + ((arr3[1] & 0xf0) >> 4);
-      arr4[2] = ((arr3[1] & 0x0f) << 2) + ((arr3[2] & 0xc0) >> 6);
-      arr4[3] = arr3[2] & 0x3f;
-
-      for(i = 0; (i <4) ; i++) {
-        output[offset++]= chars[arr4[i]];
-		}
-      i = 0;
-    }
-  }
-  if (i) {
-    for(j = i; j < 3; j++) {
-      arr3[j] = '\0';
-	}
-    arr4[0] = ( arr3[0] & 0xfc) >> 2;
-    arr4[1] = ((arr3[0] & 0x03) << 4) + ((arr3[1] & 0xf0) >> 4);
-    arr4[2] = ((arr3[1] & 0x0f) << 2) + ((arr3[2] & 0xc0) >> 6);
-
-    for (j = 0; (j < i + 1); j++) {
-      output[offset++]= chars[arr4[j]];
-	}
-    while((i++ < 3)) {
-      output[offset++]= '=';
-	}
-  }
-  output[offset++]= 0;	// add proper string terminator
-}
 
 void uade_set_panning(float val) {
 	struct uade_state *state= &_state;
@@ -1052,9 +1086,8 @@ static int get_player_name(const char *dir, char *modulename, char *playername) 
 	if (uade_song_info(info_text, sizeof info_text, info_text, UADE_MODULE_INFO) == 0) {	// UGLY SHIT using info_text as I/O param...
 //		fprintf(stderr, "info: [%s]\n", info_text);
 #ifdef EMSCRIPTEN
-		base64_encode(info_text, base64_info_text, strlen(info_text));
 	} else {
-		base64_info_text[0]; // make sure there is no text to decode
+		info_text[0]= 0; // make sure there is no text
 		
 #endif
 	}

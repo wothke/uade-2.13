@@ -9,21 +9,17 @@ mergeInto(LibraryManager.library, {
 		return window['fileSizeRequestCallback'](name);
 	},
 	uade_notify_song_update: function(i, min, max, curr) {
-		var infoText= Pointer_stringify(i);	
 		var minText= Pointer_stringify(min);	
 		var maxText= Pointer_stringify(max);	
 		var currText= Pointer_stringify(curr);	
 		
-		// extract original text from base64 encoded (without the encoding EMSCRIPTEN would
-		// damage the original encoding beyond repair..)
-		
-		// no idea how the utility logic can be inlined here or in pre.js without the fucking
+		// no idea how the utility logic can be inlined here or in pre.js without having the fucking
 		// closure compiler messing everything up.. FUCKING POS
 
-		var rawBytes = window["base64Decode"](infoText);
+		var rawBytes = window["rawBytes"](Module, i);	// Pointer_stringify would mess up non-ASCII data
 		var arr = window["getStringifiedLines"](rawBytes);
 		
-		infoText="";
+		var infoText="";
 		for (var i= 0; i<arr.length; i++) {
 			infoText+= arr[i]+"<br>";
 		}

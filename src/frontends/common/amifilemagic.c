@@ -1144,7 +1144,7 @@ void uade_filemagic(unsigned char *buf, size_t bufsize, char *pre,
 	strcpy(pre, "PUMA");	/* Pumatracker */
       }
     }
-  }
+  } 
 }
 
 

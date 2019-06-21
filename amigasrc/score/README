@@ -1,0 +1,10 @@
+for setup of cross-compiler (e.g. to recompile "score" see: 
+https://blitterstudio.com/setting-up-an-amiga-cross-compiler/
+
+	export VBCC=/usr/local/vbcc
+	export PATH=$VBCC/bin:$PATH
+	vasmm68k_mot.exe -no-opt  -o score -Fbin  score.s
+	
+	
+NOTE: I replaced the content of "amigasrc/score" with the version from the current 
+UADE HEAD. (The resulting "score" binary is identical to the old one.)

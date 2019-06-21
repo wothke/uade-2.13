@@ -4,7 +4,7 @@
 * Copyright: Heikki Orsila <heikki.orsila@iki.fi>
 * License: GNU LGPL
 * (relicensing is very possible for open source development reasons)
-*
+
 	include	custom.i
 	include	exec_lib.i
 	include	graphics_lib.i
@@ -13,10 +13,8 @@
 
 	include	np.i
 
-	incdir	include:
-	include misc/deliplayer.i
-	include misc/eagleplayer.i
-
+	include misc/DeliPlayer.i
+	include misc/EaglePlayer.i
 	include	resources/cia.i
 	include	lvo3.0/cia_lib.i
 	include	devices/timer.i
@@ -87,7 +85,10 @@ EP_OPT_SIZE		equ	256
 * $0D00	exec base (-6*EXECENTRIES == -6 * 210)
 
 	section	uadesoundcore,code_c
-	illegal
+
+* The org statement acts as a memory poison to catch absolute addressing.
+* We need pc relative addressing.
+	org	$00fe0000
 
 start	* set super stack and user stack
 	move.l	$114,a7
@@ -329,7 +330,7 @@ reloc_success	lea	binbase(pc),a1
 	lea	chippoint(pc),a0
 	move.l	moduleptr(pc),d0
 	add.l	modulesize(pc),d0
-	add.l	#1024,d0
+	addi.l	#1024,d0
 	clr.b	d0
 	move.l	d0,(a0)
 
@@ -428,7 +429,7 @@ is_pal	move	d1,beamcon0+custom
 	move.l	$11c.w,d1
 	beq.b	nospecialsubs
 	move.l	$120.w,d0
-	cmp	#2,d1
+	cmpi	#2,d1
 	bne.b	notrelsubs
 	move	minsubsong(pc),d1
 	add	d1,d0
@@ -615,10 +616,10 @@ newstop	stop	#$2000
 
 * dumps memory to output trap
 bintrap	push	all
-	cmp.l	#32,d0
+	cmpi.l	#32,d0
 	ble.b	nottoobig
 	moveq	#32,d0
-nottoobig	and.l	#-4,d0
+nottoobig	andi.l	#-4,d0
 	push	all
 	move.l	a0,d0
 	lea	binaddr(pc),a0
@@ -671,10 +672,10 @@ genhexstring	push	all
 ghsl	rol.l	#4,d0
 	moveq	#$f,d1
 	and.l	d0,d1
-	cmp	#10,d1
+	cmpi	#10,d1
 	blt.b	notalfa
-	add.b	#'A'-10-$30,d1
-notalfa	add.b	#$30,d1
+	addi.b	#'A'-10-$30,d1
+notalfa	addi.b	#$30,d1
 	move.b	d1,(a0)+
 	dbf	d7,ghsl
 	pull	all
@@ -815,13 +816,13 @@ inputmessagehandler
 	sub	cursubsong(pc),d1
 	lea	adjacentsubfunc(pc),a1
 	clr.l	(a1)
-	cmp	#1,d1
+	cmpi	#1,d1
 	bne.b	notnextsub
 	move.l	nextsongfunc(pc),d2
 	beq.b	notnextsub
 	move.l	d2,(a1)
 	bra.b	dontcallsetss
-notnextsub	cmp	#-1,d1
+notnextsub	cmpi	#-1,d1
 	bne.b	notprevsub
 	move.l	prevsongfunc(pc),d2
 	beq.b	notprevsub
@@ -836,13 +837,13 @@ nnsubs
 	cmp.l	#UADE_NTSC,(A0)
 	bne.b	no_ntsc_pal
 	move.l	$124.w,d0
-	and.l	#1,d0
+	andi.l	#1,d0
 	move.l	d0,d1
 	eor.b	#1,d0
 	lsl	#5,d0
 	move	d0,beamcon0+custom
 	lea	ntsc_report_bit(pc),a0
-	add.b	#$30,d1
+	addi.b	#$30,d1
 	move.b	d1,(a0)
 	lea	ntsc_report_msg(pc),a0
 	bsr	put_string
@@ -920,94 +921,94 @@ tagloop	move.l	(a0),d0
 	tst.l	d0
 	beq	endtagloop
 
-	cmp.l	#DTP_Check2,d0
+	cmpi.l	#DTP_Check2,d0
 	bne.b	nono1
 	lea	dtp_check(pc),a1
 	move.l	4(a0),(a1)
-nono1	cmp.l	#EP_Check3,d0
+nono1	cmpi.l	#EP_Check3,d0
 	bne.b	nono1_2
 	lea	ep_check3(pc),a1
 	move.l	4(a0),(a1)
-nono1_2	cmp.l	#EP_Check5,d0
+nono1_2	cmpi.l	#EP_Check5,d0
 	bne.b	nono1_3
 	lea	ep_check5(pc),a1
 	move.l	4(a0),(a1)
-nono1_3	cmp.l	#DTP_Interrupt,d0
+nono1_3	cmpi.l	#DTP_Interrupt,d0
 	bne.b	nono2
 	lea	intfunc(pc),a1
 	move.l	4(a0),(a1)
-nono2	cmp.l	#DTP_InitPlayer,d0
+nono2	cmpi.l	#DTP_InitPlayer,d0
 	bne.b	nono3
 	lea	initfunc(pc),a1
 	move.l	4(a0),(a1)
-nono3	cmp.l	#DTP_SubSongRange,d0
+nono3	cmpi.l	#DTP_SubSongRange,d0
 	bne.b	nono4
 	lea	subsongfunc(pc),a1
 	move.l	4(a0),(a1)
-nono4	cmp.l	#DTP_EndSound,d0
+nono4	cmpi.l	#DTP_EndSound,d0
 	bne.b	nono5
 	lea	endfunc(pc),a1
 	move.l	4(a0),(a1)
-nono5	cmp.l	#DTP_InitSound,d0
+nono5	cmpi.l	#DTP_InitSound,d0
 	bne.b	nono6
 	lea	initsoundfunc(pc),a1
 	move.l	4(a0),(a1)
-nono6	cmp.l	#DTP_CustomPlayer,d0
+nono6	cmpi.l	#DTP_CustomPlayer,d0
 	bne.b	nono7
 	lea	moduleptr(pc),a1
 	clr.l	(a1)
 	lea	modulesize(pc),a1
 	clr.l	(a1)
-nono7	cmp.l	#DTP_Volume,d0
+nono7	cmpi.l	#DTP_Volume,d0
 	bne.b	nono9
 	lea	volumefunc(pc),a1
 	move.l	4(a0),(a1)
-nono9	cmp.l	#DTP_NextSong,d0
+nono9	cmpi.l	#DTP_NextSong,d0
 	bne.b	nono10
 	lea	nextsongfunc(pc),a1
 	move.l	4(a0),(a1)
-nono10	cmp.l	#DTP_PrevSong,d0
+nono10	cmpi.l	#DTP_PrevSong,d0
 	bne.b	nono11
 	lea	prevsongfunc(pc),a1
 	move.l	4(a0),(a1)
-nono11	cmp.l	#DTP_DeliBase,d0
+nono11	cmpi.l	#DTP_DeliBase,d0
 	bne.b	nono12
 	lea	eaglebase(pc),a1
 	move.l	4(a0),a2
 	move.l	a1,(a2)
-nono12	cmp.l	#DTP_StartInt,d0
+nono12	cmpi.l	#DTP_StartInt,d0
 	bne.b	nono13
 	lea	startintfunc(pc),a1
 	move.l	4(a0),(a1)
-nono13	cmp.l	#DTP_StopInt,d0
+nono13	cmpi.l	#DTP_StopInt,d0
 	bne.b	nono14
 	lea	stopintfunc(pc),a1
 	move.l	4(a0),(a1)
-nono14	cmp.l	#DTP_Config,d0
+nono14	cmpi.l	#DTP_Config,d0
 	bne.b	nono15
 	lea	configfunc(pc),a1
 	move.l	4(a0),(a1)
-nono15	cmp.l	#DTP_ExtLoad,d0
+nono15	cmpi.l	#DTP_ExtLoad,d0
 	bne.b	nono16
 	lea	extloadfunc(pc),a1
 	move.l	4(a0),(a1)
-nono16	cmp.l	#DTP_NewSubSongRange,d0
+nono16	cmpi.l	#DTP_NewSubSongRange,d0
 	bne.b	nono17
 	lea	newsubsongarray(pc),a1
 	move.l	4(a0),(a1)
-nono17	cmp.l	#DTP_NoteStruct,d0
+nono17	cmpi.l	#DTP_NoteStruct,d0
 	bne.b	nono18
 	lea	noteplayerptr(pc),a1
 	move.l	4(a0),(a1)
-nono18	cmp.l	#$80004486,d0		* DTP_Process+9
+nono18	cmpi.l	#$80004486,d0		* DTP_Process+9
 	bne.b	nono19
 	lea	noteplayersetupfunc(pc),a1
 	move.l	4(a0),(a1)
-nono19	cmp.l	#EP_InitAmplifier,d0
+nono19	cmpi.l	#EP_InitAmplifier,d0
 	bne.b	nono20
 	lea	amplifier_init_func(pc),a1
 	move.l	4(a0),(a1)
-nono20	cmp.l	#EP_EagleBase,d0
+nono20	cmpi.l	#EP_EagleBase,d0
 	bne.b	nono21
 	lea	eaglebase(pc),a1
 	move.l	4(a0),a2
@@ -1024,7 +1025,7 @@ get_player_info	move.l	binbase(pc),a0
 infoloop	move.l	(a0),d0
 	tst.l	d0
 	beq	endinfoloop
-	cmp.l	#DTP_ModuleName,d0
+	cmpi.l	#DTP_ModuleName,d0
 	bne.b	nodtpmodulename
 	move.l	4(a0),a1
 	move.l	(a1),d1
@@ -1040,7 +1041,7 @@ infoloop	move.l	(a0),d0
 	bsr	put_message
 	pull	all
 	bra	nextinfoiter
-nodtpmodulename	cmp.l	#DTP_PlayerName,d0
+nodtpmodulename	cmpi.l	#DTP_PlayerName,d0
 	bne.b	nodtpplayername
 	push	all
 	move.l	4(a0),a0
@@ -1053,7 +1054,7 @@ nodtpmodulename	cmp.l	#DTP_PlayerName,d0
 	bsr	put_message
 	pull	all
 	bra	nextinfoiter
-nodtpplayername	cmp.l	#DTP_FormatName,d0
+nodtpplayername	cmpi.l	#DTP_FormatName,d0
 	bne.b	nodtpformatname
 	move.l	4(a0),a1
 	move.l	(a1),d1
@@ -1133,20 +1134,20 @@ hex2int	moveq	#0,d0
 hexloop	move.b	(a0)+,d1
 	beq.b	endhexloop
 	lsl	#4,d0
-	cmp.b	#$61,d1
+	cmpi.b	#$61,d1
 	blt.b	notsmall
-	sub.b	#$61-10,d1
-	and	#$f,d1
+	subi.b	#$61-10,d1
+	andi	#$f,d1
 	or	d1,d0
 	bra.b	hexloop
-notsmall	cmp.b	#$41,d1
+notsmall	cmpi.b	#$41,d1
 	blt.b	notbig
-	sub.b	#$41-10,d1
-	and	#$f,d1
+	subi.b	#$41-10,d1
+	andi	#$f,d1
 	or	d1,d0
 	bra.b	hexloop
-notbig	sub.b	#$30,d1
-	and	#$f,d1
+notbig	subi.b	#$30,d1
+	andi	#$f,d1
 	or	d1,d0
 	bra.b	hexloop
 endhexloop	pull	d1/a0
@@ -1370,7 +1371,7 @@ set_cia_timer_value
 	lea	$bfe001,a0
 	bra.b	set_ciaa_timer
 set_ciab_timer	lea	$bfd000,a0
-set_ciaa_timer	and	#1,d1
+set_ciaa_timer	andi	#1,d1
 	lsl	#8,d1
 	add	d1,d1
 	add	d1,a0
@@ -1600,9 +1601,9 @@ initsoundintena	* this hack overcomes fatality in SynTracker deliplayer
 	* SynTracker does move #$4000,intena+custom in InitSound
 	* function and does not re-enable interrupts
 	move	intenar+custom,d2
-	and	#$4000,d1
+	andi	#$4000,d1
 	beq.b	nointenaproblem
-	and	#$4000,d2
+	andi	#$4000,d2
 	bne.b	nointenaproblem
 	lea	intenamsg(pc),a0
 	bsr	put_string
@@ -1663,7 +1664,7 @@ notthisdata	add	#12,a1
 enddatalistloop1
 	pull	d1/a1
 	rts
-endloopillegal	add.b	#$30,d0
+endloopillegal	addi.b	#$30,d0
 	lea	errorloadindex(pc),a1
 	move.b	d0,(a1)
 	lea	getlistdataerror(pc),a0
@@ -1785,17 +1786,17 @@ relocator	cmp.l	#$000003f3,(a0)+
 	subq	#1,d7
 hunkcheckloop	move.l	(a0)+,d1
 	move.l	d1,d2
-	and.l	#$3fffffff,d1
+	andi.l	#$3fffffff,d1
 	lsl.l	#2,d1
 	move.l	d1,(a1)+		* save hunk size (in bytes)
 	* Harry Sintonen pointed out there is a possibility of extra long
 	* memattr here (another long word) if MEMF_CHIP and MEMF_FAST flags
 	* are both set, but i'm not testing for that work-around unless
 	* it really happens with some player/custom we know of.
-	and.l	#$40000000,d2
+	andi.l	#$40000000,d2
 	move.l	d2,(a1)+		* save hunk mem type
 	move.l	(a2),d0			* take relocpoint
-	and.b	#-8,d0			* align by 8
+	andi.b	#-8,d0			* align by 8
 	addq.l	#8,d0
 	move.l	d0,(a1)+		* save reloc addr for hunk
 	add.l	d1,d0
@@ -1810,8 +1811,8 @@ hunkcheckloop	move.l	(a0)+,d1
 HunkLoop	push	d7/a1
 HunkLoopTakeNext
 	move.l	(a0)+,d1
-	and.l	#$ffff,d1
-	cmp.l	#$000003f1,d1
+	andi.l	#$ffff,d1
+	cmpi.l	#$000003f1,d1
 	bne.b	NotDebugHunk
 	pushr	a0
 	lea	debughunkwarn(pc),a0
@@ -1822,11 +1823,11 @@ HunkLoopTakeNext
 	add.l	d0,a0
 	bra.b	HunkLoopTakeNext
 NotDebugHunk
-	cmp.l	#$000003ea,d1
+	cmpi.l	#$000003ea,d1
 	beq	DataCodeHunk
-	cmp.l	#$000003e9,d1
+	cmpi.l	#$000003e9,d1
 	beq	DataCodeHunk
-	cmp.l	#$000003eb,d1
+	cmpi.l	#$000003eb,d1
 	beq	BSSHunk
 hunklooperror	pull	d7/a1
 	moveq	#-1,d0
@@ -1985,8 +1986,8 @@ exec_allocmem	push	d1-d7/a0-a6
 	move.l	(a0),d0
 	move.l	d0,d3
 	add.l	d2,d3
-	and.b	#$f0,d3
-	add.l	#16,d3
+	andi.b	#$f0,d3
+	addi.l	#16,d3
 	move.l	d3,(a0)
 	* test if MEMF_CLEAR is set
 	btst	#16,d1
@@ -2009,7 +2010,7 @@ clearmem	movem.l	d0-d2/a0,-(a7)
 ltr1	clr.l	(a0)+
 	subq.l	#1,d0
 	bne.b	ltr1
-noltr1	and	#$3,d1
+noltr1	andi	#$3,d1
 	subq	#1,d1
 	bmi.b	nobs1
 ybs1	clr.b	(a0)+
@@ -2024,7 +2025,7 @@ memcopy	push	d0-d1/a0-a1
 ltr2	move.l	(a0)+,(a1)+
 	subq.l	#1,d0
 	bne.b	ltr2
-noltr2	and	#$3,d1
+noltr2	andi	#$3,d1
 	subq	#1,d1
 	bmi.b	nobs2
 ybs2	move.b	(a0)+,(a1)+
@@ -2074,7 +2075,7 @@ fixfilewarning	dc.b	'warning: fixfilename',0
 dos_fixfilename	push	d0-d7/a1-a6
 	move.l	a0,a4
 dos_ffn_sloop	move.b	(a0)+,d0
-	cmp.b	#':',d0
+	cmpi.b	#':',d0
 	beq.b	dos_ffn_nothing
 	tst.b	d0
 	bne.b	dos_ffn_sloop
@@ -2169,7 +2170,7 @@ dos_file_list	dc.l	1,0,0,0		* index, filepos, filenameptr, filesize
 	dc.l	0
 
 dos_seek	push	d1-d7/a0-a6
-	and	#15,d1
+	andi	#15,d1
 	subq	#1,d1
 	lsl	#4,d1
 	lea	dos_file_list(pc),a2
@@ -2182,12 +2183,12 @@ dos_seek	push	d1-d7/a0-a6
 	moveq	#-1,d0
 	rts
 seek_is_opened	move.l	4(a2),d0
-	cmp	#1,d3
+	cmpi	#1,d3
 	bne.b	seek_not_end
 	add.l	12(a2),d2
 	move.l	d2,4(a2)
 	bra.b	seek_done
-seek_not_end	cmp	#-1,d3
+seek_not_end	cmpi	#-1,d3
 	bne.b	seek_not_start
 	move.l	d2,4(a2)
 	bra.b	seek_done
@@ -2210,7 +2211,7 @@ dosreadmsg	dc.l	UADE_READ
 dosreadmsge
 
 dos_read	push	d1-d7/a0-a6
-	and	#15,d1
+	andi	#15,d1
 	subq	#1,d1
 	lsl	#4,d1
 	lea	dos_file_list(pc),a2
@@ -2237,7 +2238,7 @@ read_is_opened	lea	dosreadmsg(pc),a0
 	rts
 
 dos_close	push	all
-	and	#15,d1
+	andi	#15,d1
 	subq	#1,d1
 	lsl	#4,d1
 	lea	dos_file_list(pc),a2
@@ -2280,8 +2281,8 @@ myloadseg_loadfile
 	move.l	msgptr(pc),a0
 	move.l	12(a0),d1
 	add.l	d1,d0
-	and.l	#-16,d0
-	add.l	#16,d0
+	andi.l	#-16,d0
+	addi.l	#16,d0
 	lea	chippoint(pc),a0
 	move.l	d0,(a0)
 	pullr	a0
@@ -2383,7 +2384,7 @@ addone	lea	tdmsg1(pc),a0
 	rts
 
 istimerdev	pull	d0/a1
-	cmp.b	#UNIT_VBLANK,d0
+	cmpi.b	#UNIT_VBLANK,d0
 	beq.b	novblerr
 	lea	tderrmsg2(pc),a0
 	bsr	put_string
@@ -2570,8 +2571,8 @@ liboffscheck	pushr	d0
 	move.l	d0,a0
 	subq.l	#4,a0
 	move	(a0),d0
-	and	#$4ea0,d0
-	cmp	#$4ea0,d0
+	andi	#$4ea0,d0
+	cmpi	#$4ea0,d0
 	bne.b	nolibjsr
 	move	2(a0),d0
 	ext.l	d0
@@ -2609,7 +2610,7 @@ endlibloop	pull	all
 
 exec_typeofmem	move.l	a1,d0
 	bmi.b	exec_typeofmem_fail
-	cmp.l	#$200000,d0
+	cmpi.l	#$200000,d0
 	bge.b	exec_typeofmem_fail
 	moveq	#3,d0			* MEMF_PUBLIC | MEMF_CHIP
 	rts
@@ -2636,7 +2637,7 @@ exec_allocsignal	pushr	a0
 	push	d1/a0
 	lea	exec_sig_mask(pc),a0
 	move.l	(a0),d1
-	cmp.l	#-1,d0
+	cmpi.l	#-1,d0
 	bne.b	specificsignal
 	moveq	#31,d0
 allocsigloop	btst	d0,d1
@@ -2762,13 +2763,13 @@ get_ep_info_loop2
 	; null byte)
 	move.l	a3,a0
 	bsr	strlen
-	cmp.l	#31,d0
+	cmpi.l	#31,d0
 	bgt	invalid_ep_opt
 
 	;  mark option as received
 	st	(a4)
 
-	cmp	#1,d7
+	cmpi	#1,d7
 	bne.b	ep_opt_not_a_string
 	move.l	a3,a0
 	move.l	a5,a1
@@ -2776,7 +2777,7 @@ get_ep_info_loop2
 	bsr	strlcpy
 	bra.b	end_get_ep_info_loop2
 ep_opt_not_a_string
-	cmp	#2,d7
+	cmpi	#2,d7
 	bne.b	end_get_ep_info_loop2
 	; skip "foo=" string for a hexadecimal value, where foo is an option
 	; name
@@ -2947,7 +2948,7 @@ bit0one	move.b	d1,$600(a4)		* Set B Timer value
 	move.b	#$82,$d00(a4)		* set timer B ON
 	move.b	#$11,$f00(a4)		* B timer on
 bit0zero
-	or	#$8000,d2
+	ori	#$8000,d2
 	move	d2,intena+custom	* enable cia interrupt
 	pull	all
 	moveq	#0,d0
@@ -2966,7 +2967,7 @@ rem_ciab_interrupt
 	lea	ciabdatas(pc),a2
 	lea	ciabints(pc),a3
 	lea	$bfd000,a4
-ciaremint	and	#1,d0
+ciaremint	andi	#1,d0
 	moveq	#1,d1
 	lsl	d0,d1
 	move.b	d1,$d00(a4)		* Disable A or B timer in ICR
@@ -2986,7 +2987,7 @@ ciaremint	and	#1,d0
 ciaa_interrupt	push	all
 	move	#$0008,intreq+custom * quit the int to be sure
 	move.b	$bfed01,d0	* quit int (reading should do it)
-	and	#3,d0
+	andi	#3,d0
 	btst	#0,d0
 	beq.b	ciaa_not_timer_a
 	move.l	ciaaints(pc),a0
@@ -3011,7 +3012,7 @@ ciaa_not_timer_b
 ciab_interrupt	push	all
 	move	#$2000,intreq+custom * quit the int to be sure
 	move.b	$bfdd00,d0	* quit int (reading should do it)
-	and	#3,d0
+	andi	#3,d0
 	btst	#0,d0
 	beq.b	ciab_not_timer_a
 	move.l	ciabints(pc),a0
@@ -3071,7 +3072,7 @@ amp_init_ok	pull	all
 	rts
 
 amp_is_valid_channel
-	cmp	#4,d1
+	cmpi	#4,d1
 	bhs.b	amp_not_valid_channel
 	rts
 amp_chan_warning	dc.b	'warning: illegal chan number (amp)',0
@@ -3085,10 +3086,10 @@ amp_not_valid_channel
 
 amplifier_dma	push	all
 	lea	amp_dma(pc),a0
-	and	#$000f,d1
+	andi	#$000f,d1
 	tst	d0
 	bpl.b	amp_dma_not_neg
-	or	#$8000,d1
+	ori	#$8000,d1
 amp_dma_not_neg	move	d1,dmacon+custom
 	tst	d0
 	bpl.b	amp_dma_not_neg_2
@@ -3139,19 +3140,19 @@ amp_com_filt_msg	dc.b	'unknown ENPP_PokeCommand() filter command',0
 
 amplifier_command
 	push	all
-	cmp.l	#1,d0
+	cmpi.l	#1,d0
 	bne.b	amp_com_unknown
-	cmp.l	#0,d1
+	cmpi.l	#0,d1
 	bne.b	amp_com_not_filt_off
 	bset	#1,$bfe001
 	bra.b	amp_com_end
 amp_com_not_filt_off
-	cmp.l	#1,d1
+	cmpi.l	#1,d1
 	bne.b	amp_com_not_filt_on
 	bclr	#1,$bfe001
 	bra.b	amp_com_end
 amp_com_not_filt_on
-	cmp.l	#-1,d1
+	cmpi.l	#-1,d1
 	bne.b	amp_com_not_filt_toggle
 	bchg	#1,$bfe001
 	bra.b	amp_com_end
@@ -3202,7 +3203,7 @@ no_np_setup	pull	all
 	move.l	a1,(a2)
 	moveq	#0,d0
 	move	6(a0),d0
-	and	#$0020,d0
+	andi	#$0020,d0
 	lea	np_longsamples(pc),a2
 	move.l	d0,(a2)
 	move.l	#$00010000,d2			* short sample (1 word)
@@ -3314,17 +3315,17 @@ np_no_changes	clr.b	npc_modified(a0)
 np_not_active	move.l	(a0),d0
 	bne	np_int_loop
 
-	cmp	#4,d7
+	cmpi	#4,d7
 	ble.b	np_4_chan
 	lea	np_multichan_warning(pc),a0
 	bsr	put_string
-	and	#$000f,d6
+	andi	#$000f,d6
 np_4_chan
 	tst.b	d6
 	beq.b	np_no_dma_set
 	move	d6,dmacon+custom
 	bsr	wait_audio_dma
-	or	#$8000,d6
+	ori	#$8000,d6
 	move	d6,dmacon+custom	* set relevant audio channels
 np_no_dma_set
 	move.l	np_longsamples(pc),d5
@@ -3368,7 +3369,7 @@ init_interrupts	push	all
 	lea	mylevel6(pc),a0		* set CIAB int vector
 	move.l	a0,$78.w
 	move	#$c000,d0
-	or	#$0020,d0		* enable CIAA, CIAB and VBI
+	ori	#$0020,d0		* enable CIAA, CIAB and VBI
 	move	d0,intena+custom
 
 	lea	handlertab(pc),a0
@@ -3401,9 +3402,9 @@ intvecmsg	dc.b	'setintvector(): Tried to set unauthorized interrupt '
 
 exec_set_int_vector
 	push	d1-d7/a0-a6
-	cmp	#7,d0		* validity check
+	cmpi	#7,d0		* validity check
 	blt.b	int_vec_error
-	cmp	#10,d0
+	cmpi	#10,d0
 	ble.b	int_level_ok
 int_vec_error	lea	intvecmsg(pc),a0
 	bsr	put_string
@@ -3418,7 +3419,7 @@ int_level_ok
 
 	add	d0,d0
 	move	(a0,d0),d2
-	and.l	#$ff,d2		* get int vec address
+	andi.l	#$ff,d2		* get int vec address
 	move.l	d2,a5		* a5 = hw interrupt pointer
 				* eg. $6C == VBI interrupt pointer
 	add	d0,d0
@@ -3443,7 +3444,7 @@ addintmsg	dc.b	'addintserver(): Tried to add unauthorized interrupt '
 
 exec_add_int_server
 	push	all
-	cmp.b	#5,d0
+	cmpi.b	#5,d0
 	beq.b	servlevok
 	lea	addintmsg(pc),a0
 	bsr	put_string
@@ -3530,7 +3531,7 @@ mylevel4_loop	move	mylevel4_int_seq(pc,d7),d6	* aud0int bit
 mylevel4_end_loop
 	move	intenar(a2),d0
 	and	intreqr(a2),d0
-	and	#$0780,d0
+	andi	#$0780,d0
 	bne.b	mylevel4_begin
 endmylevel4	pull	all
 	rte
