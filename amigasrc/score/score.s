@@ -9,6 +9,7 @@
 	include	exec_lib.i
 	include	graphics_lib.i
 	include	dos_lib.i
+	include	icon_lib.i
 	include	rmacros.i
 
 	include	np.i
@@ -37,6 +38,8 @@ UADE_FILESIZE	equ	14
 UADE_TIME_CRITICAL	equ	15
 UADE_GET_INFO	equ	16
 UADE_START_OUTPUT	equ	17
+UADE_ICON_LOAD	equ	18
+UADE_ICON_TOOLTYPE	equ	19
 
 EXECBASE	equ	$0D00
 EXECENTRIES	equ	210
@@ -201,7 +204,7 @@ dosdfdf	subq.l	#6,a0
 
 	move.b	#$ff,$126(a6)	* fuck med player
 	move	#$0003,$128(a6)	* execbase processor flags to 68020+
-
+	
 	lea	dos_lib_base(pc),a6
 	lea	dos_loadseg(pc),a0
 	move	jmpcom(pc),LoadSeg(a6)
@@ -225,7 +228,7 @@ dosdfdf	subq.l	#6,a0
 	move	jmpcom(pc),Lock(a6)
 	move.l	a0,Lock+2(a6)
 
-	lea	uade_lib_base(pc),a6
+	lea	uade_lib_base(pc),a6	
 	lea	uade_time_critical(pc),a0
 	move	jmpcom(pc),UadeTimeCritical(a6)
 	move.l	a0,UadeTimeCritical+2(a6)
@@ -367,6 +370,24 @@ noepmc
 	move	jmpcom(pc),-$18C(a6)
 	move.l	a0,-$18C+2(a6)
 
+	* initialize iconbase with failures	
+	lea	icon_lib_base(pc),a0
+	lea	iconwarn(pc),a1
+	move.l	#$6c,d0						* see icon_lib.i
+	bsr	exec_initlibbase				* initializes everything with a warn function..
+	
+	* initialize iconbase functions	- register the few functions actually used by PokeyNoise
+	lea	icon_lib_base(pc),a6	
+	lea	iconload(pc),a0
+	move	jmpcom(pc),GetDiskObject(a6)
+	move.l	a0,GetDiskObject+2(a6)
+	lea	iconfree(pc),a0
+	move	jmpcom(pc),FreeDiskObject(a6)
+	move.l	a0,FreeDiskObject+2(a6)	
+	lea	icontooltype(pc),a0
+	move	jmpcom(pc),FindToolType(a6)
+	move.l	a0,FindToolType+2(a6)
+	
 	* ntsc/pal checking
 	moveq	#$20,d1		* default beamcon0 = $20 for PAL
 	moveq	#50,d2		* default 50Hz for PAL
@@ -1710,7 +1731,53 @@ copystring	pushr	a5
 	pullr	a5
 	rts
 
+iconfree
+	rts						* memory leak.. does not matter
+		
+icontooltypemsg	dc.l	UADE_ICON_TOOLTYPE
+	dc.l	0,0,0,0	* key ptr, chip dest ptr, size in msgptr(pc)+12
+icontooltypemsge
+	even
+icontooltype										* char *FindToolType(char **list, char *key); D0 = (A0, A1) (presumably A0 points to garbage here since respective parsing is not implemented)
+	push	d1-d7/a0-a6
+	lea	icontooltypemsg(pc),a0
+	move.l	a1,4(a0)								* a1 points to the search key string
+	move.l	#icontooltypemsge-icontooltypemsg,d0
+	bsr	put_message									* trigger "C" side handling
+	move.l	msgptr(pc),a0
+	move.l	8(a0),d0								* pointer to found value
+	pull	d1-d7/a0-a6
+	rts
+	
+loadiconmsg	dc.l	UADE_ICON_LOAD
+	dc.l	0,0,0,0	* name ptr, dest ptr, size in msgptr(pc)+12
+loadiconmsge
+	even
 
+iconload	push	d1-d7/a0-a6
+	lea	loadiconmsg(pc),a0
+	pushr   a0
+	move.l	dtg_PathArrayPtr(a5),4(a0)		* name ptr
+	move.l	chippoint(pc),d2
+	move.l	d2,8(a0)						* dest ptr
+	pushr	d2
+	clr.l	12(a0)
+	move.l	#loadiconmsge-loadiconmsg,d0
+	bsr	put_message							* call the uade "C" code via message
+	move.l	msgptr(pc),a0
+	move.l	12(a0),d3
+	pullr	d2
+	tst.l	d3
+	beq.b	loadiconerror
+	lea	chippoint(pc),a2					* memory mgmt?
+	add.l	d3,(a2)
+	and.l	#-16,(a2)
+	add.l	#16,(a2)
+	pullr	a0
+	move.l	8(a0),d0 			* function returns pointer to buffer in D0
+loadiconerror		
+	pull	d1-d7/a0-a6
+	rts
 
 loadfilemsg	dc.l	UADE_LOADFILE
 	dc.l	0,0,0,0	* name ptr, dest ptr, size in msgptr(pc)+12
@@ -1957,7 +2024,7 @@ relochunkloop	move.l	(a0)+,d1	* take reloc entry (offset)
 	subq.l	#1,d0
 	bne.b	relochunkloop
 	bra.b	handlerelochunk
-
+	
 * same as handle reloc hunk but takes 16 bit data word inputs
 handlerelochunk_3f7
 	moveq	#0,d0
@@ -2517,6 +2584,7 @@ trapcall	move	d0,sr
 
 dos_library_name	dc.b	'dos.library',0
 uade_library_name	dc.b	'uade.library',0
+icon_library_name	dc.b	'icon.library',0
 	even
 
 exec_old_open_library
@@ -2534,9 +2602,17 @@ exec_open_library
 not_dos_lib	lea	uade_library_name(pc),a0
 	bsr	strcmp
 	tst.l	d0
-	bne.b	not_uade_lib
+	bne.b	not_icon_lib
 	bsr	send_open_lib_msg
 	lea	uade_lib_base(pc),a0
+	move.l	a0,d0
+	bra.b	return_open_lib
+not_icon_lib	lea	icon_library_name(pc),a0
+	bsr	strcmp
+	tst.l	d0
+	bne.b	not_uade_lib
+	bsr	send_open_lib_msg
+	lea	icon_lib_base(pc),a0
 	move.l	a0,d0
 	bra.b	return_open_lib
 not_uade_lib	move.l	a1,a0
@@ -2589,6 +2665,15 @@ intuiwarn	bsr	liboffscheck
 	pull	all
 	rts
 intuiwarnmsg	dc.b	'warning: intuition library function not implemented',0
+	even
+
+iconwarn	bsr	liboffscheck
+	push	all
+	lea	iconwarnmsg(pc),a0
+	bsr	put_string
+	pull	all
+	rts
+iconwarnmsg	dc.b	'warning: icon.library function not implemented',0
 	even
 
 * a0 base, a1 warn funct, d0 = abs(minimum offset)
@@ -3743,4 +3828,8 @@ uade_lib_base
 intuition_lib_base
 	dcb.b	$200,0
 
+* icon.library
+	dcb.b	$6c,0		* allocate 108 bytes intialized to 0 (LVO table: see vectors in icon_lib.i)
+icon_lib_base
+	
 end
