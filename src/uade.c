@@ -479,6 +479,11 @@ void uade_get_amiga_message(void)
     break;
 	
 #ifdef EMSCRIPTEN
+	/*
+	Reminder: Heikki meanwhile migrated the below "icon.library" functionality directly into 
+	the uade HEAD version of score.s - in order to eventually use that impl here.. the below meta-data 
+	extraction for PokeyNoise songs would need to be moved to the regular AMIGAMSG_LOADFILE.
+	*/
   case AMIGAMSG_ICON_TOOLTYPE: {
 		// get key at 0x204 (key pointer) and write result to address pointed by 0x208 
 		src = uade_get_u32(0x204);
@@ -522,13 +527,13 @@ void uade_get_amiga_message(void)
 			uade_put_long(0x20C, icon_len);
 //			uade_send_debug("load icon success: %s ptr 0x%x size 0x%x", iconfile, icon_addr, icon_len);
 			
-			// get some meta info
+			// get some meta info (the PokeyNoise player itself doesn't look for these)
 			uae_u8 *haystack = get_real_address(icon_addr);
 			uae_u8 *name= strbuf(haystack, icon_len, "NAME");
 			uae_u8 *creator= strbuf(haystack, icon_len, "CREATOR");
 			uae_u8 *copyright= strbuf(haystack, icon_len, "COPYRIGHT");	// will also match the "#COPYRIGHT" variation used by some songs
 			
-			// format apready used by other crappy modules
+			// format already used by other crappy modules
 			snprintf(info_text, sizeof info_text, "MODULENAME:\r%s\rAUTHORNAME:\r%s\rCREDITS:\r%s\r", name, creator, copyright);
 		}
 		break;

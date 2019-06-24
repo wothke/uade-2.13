@@ -179,10 +179,13 @@ UADEBackendAdapter = (function(){ var $this = function (basePath, modlandMode) {
 			} else if (output.startsWith("mdat.") && (output.indexOf("/TFMX ST/")>0)) {
 				// these ST files need the correct prefix for UADE (or any other player) to handle them
 				output= output.replace("/mdat.", "/mdst.");				
-			} else if (output.endsWith(".snd") && (output.indexOf("/Zoundmonitor/")>0)) {
-				// these ST files need the correct prefix for UADE (or any other player) to handle them
+			} else if (output.endsWith(".sng") && (output.indexOf("/Zoundmonitor/")>0)) {
+				// needed ext for UADE to handle them
 				output= output.replace(".sng", ".zm");
-			} 
+			}  else if (this.originalFile.endsWith(".sng") && (output.indexOf("/Samples/")>0)) {
+				// libs on modland are all lowercase				
+				output= output.substr(0, output.lastIndexOf("/")) + output.substr(output.lastIndexOf("/")).toLowerCase();
+			}
 			// map:  actual file name -> "wrong" name used on emu side
 			// e.g.  "smp.set"  ->      "dyter07 ongame01.os"
 			if (input != output)	// remember the filename mapping (path is the same)
